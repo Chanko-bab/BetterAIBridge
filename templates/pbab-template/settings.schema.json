@@ -1,0 +1,11 @@
+{
+    "fields": [
+        {
+            "key": "enabled",
+            "label": "启用这个模组",
+            "type": "bool",
+            "default": true,
+            "desc": "关掉之后，工具还在，但不会主动做任何事。"
+        }
+    ]
+}

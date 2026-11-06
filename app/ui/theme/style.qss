@@ -1,0 +1,170 @@
+/* 小琛桌面 主题：浅灰蓝 + 一点暖色，参照 PCL 的信息密度 */
+* { font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif; font-size: 13px; }
+
+QFrame#Root { background: transparent; border: 1px solid #dfe5ee; border-radius: 14px; }
+QWidget#RootContent { background: transparent; }
+QCheckBox#Speak { color: #5a6577; font-size: 12px; spacing: 4px; }
+
+/* 左侧导航 */
+QFrame#Sidebar { background: rgba(255, 255, 255, 0.72); border-right: 1px solid #e3e8f0; }
+QLabel#LogoMark { border-radius: 8px; }
+QLabel#Logo { font-size: 18px; font-weight: 700; color: #2b3a55; padding: 0; }
+QLabel#LogoSub { color: #5f6d82; font-size: 11px; padding: 0; }
+QLabel#AvatarCard { background: #eef3fb; border-radius: 14px; }
+QLabel#AvatarBig { background: #eef3fb; border-radius: 22px; }
+QLabel#AvatarName { font-size: 16px; font-weight: 700; color: #2b3a55; padding: 0; }
+QFrame#SplashCard { background: #ffffff; border: 1px solid #e3e8f0; border-radius: 18px; }
+QLabel#SplashName { font-size: 20px; font-weight: 700; color: #22304a; }
+QLabel#SplashLog { color: #5a6577; font-size: 12px; }
+QLabel#SplashBrand { color: #a7b2c4; font-size: 10px; }
+
+QPushButton#Nav {
+    text-align: left; padding: 9px 14px; margin: 2px 10px;
+    border: none; border-radius: 8px; color: #4a5670; background: transparent;
+}
+QPushButton#Nav:hover { background: rgba(238, 243, 251, 0.90); }
+QPushButton#Nav:pressed { background: rgba(223, 233, 250, 0.95); }
+QPushButton#Nav:checked { background: rgba(228, 237, 253, 0.92); color: #1f5fd0; font-weight: 600; }
+
+/* 状态灯 */
+QLabel#Dot { font-size: 12px; color: #6b7891; padding: 2px 10px; }
+QLabel#DotUp { font-size: 12px; color: #1a9d5b; padding: 2px 10px; }
+QLabel#DotDown { font-size: 12px; color: #c2402f; padding: 2px 10px; }
+
+/* 卡片 */
+QFrame#Card { background: #ffffff; border: 1px solid #e6ebf3; border-radius: 10px; }
+QLabel#CardTitle { color: #66748a; font-size: 12px; }
+QLabel#CardVer { color: #4a90d9; font-size: 12px; font-weight: 600; }
+QLabel#CardValue { color: #22304a; font-size: 15px; font-weight: 600; }
+QLabel#Muted { color: #5f6d82; }
+QLabel#NannyHouseTitle { font-size: 18px; font-weight: 600; color: #2b3343; }
+QLabel#NannyStats { color: #5a6577; font-size: 12px; }
+QFrame#NannyLogRow { background: rgba(255, 255, 255, 0.78); border-radius: 8px; }
+QLabel#NannyLogTime { color: #8a94a6; font-size: 11px; }
+QLabel#NannyLogKind { color: #3b76d9; font-size: 11px; }
+QLabel#NannyLogText { color: #2b3343; }
+QScrollArea#NannyHouseScroll { background: transparent; border: none; }
+
+QLabel#AILabel { color: #a7b2c4; font-size: 11px; padding-right: 4px; }
+QLabel#TutTitle { color: #22304a; font-size: 16px; font-weight: 600; }
+QLabel#Accent { color: #1f5fd0; font-weight: 600; }
+
+QProgressBar { border: none; background: #eef1f7; border-radius: 4px; height: 8px; text-align: center; }
+QProgressBar::chunk { background: #5b8def; border-radius: 4px; }
+
+/* 聊天 */
+QScrollArea#ChatScroll { border: none; background: transparent; }
+QScrollArea { background: transparent; border: none; }
+QScrollArea QWidget#qt_scrollarea_viewport { background: transparent; }
+QScrollArea#NannyScroll QWidget#qt_scrollarea_viewport { background: transparent; }
+QWidget#MainStage, QWidget#RootContent, QWidget#ChatStage, QWidget#ChatContent, QStackedWidget#PageStack { background: transparent; }
+QWidget#ChatBody { background: transparent; }
+QWidget#ChatPage { background: transparent; }
+QWidget#ChatStage, QWidget#ChatContent { background: transparent; }
+QWidget#Backdrop { background: transparent; }
+QFrame#BubbleMe { background: #dbe8fe; border-radius: 10px; }
+QFrame#BubbleHer { background: #ffffff; border: 1px solid #e6ebf3; border-radius: 10px; }
+QLabel#BubbleText { color: #22304a; }
+QLineEdit#ChatInput, QPlainTextEdit#ChatInput { padding: 9px 12px; border: 1px solid #dce3ee; border-radius: 8px; background: #ffffff; }
+QLineEdit#ChatInput:focus, QPlainTextEdit#ChatInput:focus { border: 1px solid #5b8def; }
+
+QPushButton#Primary {
+    background: rgba(63, 124, 232, 0.94); color: #ffffff; border: none; border-radius: 8px; padding: 8px 18px;
+}
+QPushButton#Primary:hover { background: rgba(53, 111, 214, 0.97); }
+QPushButton#Primary:pressed { background: rgba(44, 96, 196, 1.0); }
+QPushButton#Primary:disabled { background: #b9c9e6; }
+QPushButton#Ghost {
+    background: rgba(255, 255, 255, 0.78); color: #3a4763; border: 1px solid #dce3ee; border-radius: 8px; padding: 7px 14px;
+}
+QPushButton#Ghost:hover { background: rgba(242, 246, 253, 0.95); }
+QPushButton#Ghost:pressed { background: rgba(228, 237, 253, 0.98); }
+
+QListWidget { background: #ffffff; border: 1px solid #e6ebf3; border-radius: 8px; }
+QPlainTextEdit { background: #ffffff; border: 1px solid #e6ebf3; border-radius: 8px;
+                 font-family: "Cascadia Mono", "Consolas", monospace; font-size: 12px; }
+QComboBox { background: #ffffff; border: 1px solid #dce3ee; border-radius: 6px; padding: 4px 8px; }
+QStatusBar { background: #ffffff; border-top: 1px solid #e3e8f0; color: #7c8aa3; }
+
+/* ---- 自绘标题栏 / 无边框 ---- */
+QWidget#TitleBar { background: rgba(255, 255, 255, 0.85); border-bottom: 1px solid #e3e8f0; }
+QLabel#TitleText { color: #22304a; font-size: 14px; font-weight: 600; }
+QLabel#TitleLogo { color: #3f7ce8; }
+QPushButton#TitleBtn {
+    border: none; border-radius: 6px; color: #5a6784; background: transparent; font-size: 15px;
+}
+QPushButton#TitleBtn:hover { background: #eef3fb; }
+QPushButton#TitleBtn:pressed { background: #e4edfd; }
+
+/* 底部状态行 */
+QFrame#Foot { background: #ffffff; border-top: 1px solid #e3e8f0; }
+
+/* 分段按钮：您的状态 */
+QPushButton#Seg {
+    background: #ffffff; border: 1px solid #dce3ee; border-radius: 13px;
+    padding: 0 14px; color: #4a5670;
+}
+QPushButton#Seg:hover { background: rgba(242, 246, 253, 0.95); }
+QPushButton#Seg:pressed { background: rgba(226, 236, 252, 0.98); }
+QPushButton#Seg:checked { background: #e4edfd; border: 1px solid #5b8def; color: #1f5fd0; font-weight: 600; }
+
+/* 气泡里的元信息 */
+QLabel#BubbleTag { color: #1f5fd0; font-size: 11px; }
+QLabel#BubbleTime { color: #a3aec2; font-size: 10px; }
+QLabel#PageTitle { color: #22304a; font-size: 16px; font-weight: 700; }
+
+/* 系统提示气泡（教程/配置提示，不参与对话流） */
+QFrame#BubbleSys { background: #eef3fb; border: 1px dashed #c3d3ef; border-radius: 10px; }
+QLabel#BubbleSysText { color: #4a5a76; font-size: 12px; }
+
+QLabel#Warn {
+    color: #9a5b13;
+    background: #fff5e6;
+    border: 1px solid #f0d4ad;
+    border-radius: 8px;
+    padding: 2px 8px;
+    font-size: 12px;
+}
+
+/* 保姆程序栏（右侧流水，只记提醒，不参与聊天） */
+QFrame#NannyCol { background: rgba(255, 255, 255, 0.62); }
+QLabel#NannyTitle { color: #22304a; font-size: 13px; font-weight: 700; }
+QScrollArea#NannyScroll { border: none; background: transparent; }
+QScrollArea#NannyScroll > QWidget > QWidget { background: transparent; }
+QWidget#NannyBody { background: transparent; }
+QFrame#NannyItem { background: #f7f9fd; border: 1px solid #e8eef8; border-radius: 8px; }
+QLabel#NannyTime { color: #9aa7bd; font-size: 10px; }
+QLabel#NannyText { color: #3c4a63; font-size: 12px; }
+
+QPushButton#NannyBadge {
+    background: #eef3fb;
+    border: 1px solid #d7e2f5;
+    border-radius: 8px;
+    padding: 0;
+    color: #1f5fd0;
+    font-size: 11px;
+    font-weight: 600;
+}
+QPushButton#NannyBadge:hover { background: #e4edfd; }
+
+QPushButton#NannyTab {
+    background: #ffffff;
+    border: 1px solid #d7e2f5;
+    border-radius: 9px;
+    padding: 0;
+    color: #1f5fd0;
+    font-size: 11px;
+    font-weight: 600;
+}
+QPushButton#NannyTab:hover { background: #eef4ff; }
+
+QPushButton#NannyBtn {
+    background: #ffffff;
+    border: 1px solid #dbe3ef;
+    border-radius: 6px;
+    padding: 0;
+    color: #4a5670;
+    font-size: 11px;
+}
+QPushButton#NannyBtn:hover { background: #f2f6fd; border-color: #c9d6ea; }
+QPushButton#NannyBtn:pressed { background: #e4edfd; }

@@ -1,0 +1,57 @@
+# ---- 运行时 / 依赖（绝不能进仓库）----
+.venv/
+**/.venv/
+venv/
+**/venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# ---- 构建产物 ----
+build/
+dist/
+*.exe
+*.msi
+*.pbab
+payload/
+packaging/version.txt
+program_cache/
+program_bundle/downloads/
+
+# ---- 本机配置与个人数据 ----
+config/app.yaml
+config/install.json
+logs/
+**/runtime/logs/
+WiseEntity/entity/state/
+WiseEntity/entity/memory/internal/.raw/
+WiseEntity/entity/memory/bridge_token.json
+**/data/
+**/_bak*/
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ---- 本机用户数据 / 本地语音包（不进仓库）----
+local_tts/
+_moss_src/
+_moss_src.zip
+WiseEntity/entity/config/sense.json
+WiseEntity/entity/config/face.png
+WiseEntity/entity/config/emotion_profile.json
+WiseEntity/entity/emotion/state.json
+WiseEntity/entity/brain/flybrain_state.json
+WiseEntity/entity/self/
+config/sense.json
+# ---- 出包中间产物 ----
+/packaging/payload.zip
+/packaging/bab.sed
+WiseEntity/entity/persona/persona.md
+WiseEntity/capability/stomach/stomach.json

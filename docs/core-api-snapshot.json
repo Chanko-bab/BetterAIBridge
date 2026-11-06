@@ -1,0 +1,162 @@
+{
+    "captured_at":  "2026-10-28T18:15:06+08:00",
+    "base":  "http://127.0.0.1:40720",
+    "/health":  {
+                    "ok":  true,
+                    "uptime":  37232.2,
+                    "brain_ready":  true,
+                    "mood":  "å¹³å¹³ç",
+                    "notes":  521,
+                    "sessions":  5
+                },
+    "/state":  {
+                   "ready":  true,
+                   "emotions":  {
+                                    "joy":  0.5,
+                                    "curiosity":  0.55,
+                                    "affection":  0.6022,
+                                    "fear":  0.15,
+                                    "sadness":  0.1078,
+                                    "boredom":  0.3599,
+                                    "energy":  0.8578
+                                },
+                   "mood_line":  "å¹³å¹³ç",
+                   "situation_line":  "å¥¹çå°çæ¯å­ï¼ä¸æ¯ç»é¢ï¼è§é¢å¨å¥¹è¿å¿æ¯ä¸ä¸²æ é¢ã",
+                   "fight":  false,
+                   "uptime":  37232.4,
+                   "notes":  {
+                                 "self":  0,
+                                 "programs":  {
+                                                  "program_qq":  {
+                                                                     "owner":  478,
+                                                                     "people":  {
+                                                                                    "1602952702":  3,
+                                                                                    "259676682":  2
+                                                                                },
+                                                                     "groups":  {
+                                                                                    "1130026800":  4
+                                                                                },
+                                                                     "others":  {
+
+                                                                                }
+                                                                 },
+                                                  "program_bilibili":  {
+                                                                           "owner":  11,
+                                                                           "people":  {
+
+                                                                                      },
+                                                                           "groups":  {
+
+                                                                                      },
+                                                                           "others":  {
+                                                                                          "219540765":  2,
+                                                                                          "670363050":  3,
+                                                                                          "7648697":  2,
+                                                                                          "80000000":  2
+                                                                                      }
+                                                                       },
+                                                  "program_web":  {
+                                                                      "owner":  14,
+                                                                      "people":  {
+
+                                                                                 },
+                                                                      "groups":  {
+
+                                                                                 },
+                                                                      "others":  {
+
+                                                                                 }
+                                                                  }
+                                              }
+                             },
+                   "bili":  {
+                                "enabled":  true,
+                                "poll_seconds":  90,
+                                "max_replies_per_hour":  12,
+                                "owner_mids":  [
+                                                   "20001"
+                                               ],
+                                "allow_uids":  [
+
+                                               ],
+                                "skip_uids":  [
+                                                  "12076317",
+                                                  "2"
+                                              ],
+                                "dry_run":  false,
+                                "reply_to_strangers":  false
+                            }
+               },
+    "/brain/state":  {
+                         "ready":  true,
+                         "emotions":  {
+                                          "joy":  0.5,
+                                          "curiosity":  0.55,
+                                          "affection":  0.6022,
+                                          "fear":  0.15,
+                                          "sadness":  0.1078,
+                                          "boredom":  0.3599,
+                                          "energy":  0.8578
+                                      },
+                         "mood_line":  "å¹³å¹³ç",
+                         "situation_line":  "å¥¹çå°çæ¯å­ï¼ä¸æ¯ç»é¢ï¼è§é¢å¨å¥¹è¿å¿æ¯ä¸ä¸²æ é¢ã",
+                         "fight":  false,
+                         "uptime":  37232.4
+                     },
+    "/drives":  {
+                    "ok":  true,
+                    "active":  [
+
+                               ],
+                    "emotions":  {
+                                     "joy":  0.5,
+                                     "curiosity":  0.55,
+                                     "affection":  0.6022,
+                                     "fear":  0.15,
+                                     "sadness":  0.1078,
+                                     "boredom":  0.3599,
+                                     "energy":  0.8578
+                                 },
+                    "meta":  {
+                                 "da_owner":  0.0,
+                                 "hours_since_owner":  0.9992168406645457
+                             }
+                },
+    "/stomach":  {
+                     "state":  {
+                                   "level":  "normal",
+                                   "balance":  5.25,
+                                   "text":  "èå­ï¼ä¸é¥¿ï¼ä½ä¹ä¸ç®é¥±ï¼å«ä¸»å¨æé±ã",
+                                   "ts":  1793182284.019634,
+                                   "updated_at":  "2026-10-28T18:11:24",
+                                   "error":  "",
+                                   "stale":  false
+                               },
+                     "fragment":  "èå­ï¼ä¸é¥¿ï¼ä½ä¹ä¸ç®é¥±ï¼å«ä¸»å¨æé±ã"
+                 },
+    "openapi_paths":  [
+                          "/",
+                          "/health",
+                          "/brain/fragment",
+                          "/brain/state",
+                          "/stomach",
+                          "/stomach/poll",
+                          "/brain/stimulate",
+                          "/state",
+                          "/chat",
+                          "/event",
+                          "/memory",
+                          "/memory/note",
+                          "/persona",
+                          "/programs",
+                          "/programs/{name}",
+                          "/outbox/sent",
+                          "/diary",
+                          "/drives",
+                          "/drift",
+                          "/bili/status",
+                          "/bili/video",
+                          "/bili/videos",
+                          "/bili/poll"
+                      ]
+}

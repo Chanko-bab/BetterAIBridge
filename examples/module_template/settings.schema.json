@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "fields": [
+    { "key": "enabled", "type": "bool", "label": "启用这个模组的功能", "default": true },
+    { "key": "max_per_hour", "type": "int", "label": "每小时最多几次", "default": 6, "min": 0, "max": 100 },
+    { "key": "style", "type": "choice", "label": "语气", "default": "短", "choices": ["短", "正常", "详细"] }
+  ]
+}

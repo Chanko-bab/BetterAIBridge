@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>文档 —— BetterAIBridge</title>
+  <meta name="description" content="BetterAIBridge 0.5.8 文档：安装、第一次打开、数据与存档、模组、耳目、语音、常见问题、卸载与已知限制。">
+  <link rel="icon" href="assets/bab-64.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="nav" aria-label="主导航">
+  <div class="wrap nav-inner">
+    <a class="brand" href="index.html">
+      <img src="assets/bab-40.png" alt="">
+      <span>BetterAIBridge<small>BETTER AI BRIDGE</small></span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html">首页</a>
+      <a href="modules.html">模组</a>
+      <a href="docs.html" aria-current="page">文档</a>
+      <a class="nav-cta" href="https://github.com/Chanko-bab/BetterAIBridge/releases/latest">下载 0.5.8</a>
+    </div>
+  </div>
+</nav>
+
+<header class="page-hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span> 0.5.8 · 内测文档</span>
+    <h1>先装好，<br>再用起来。</h1>
+    <p>这一页只讲你“怎么用、怎么报错、怎么不丢东西”。想改代码或写模组，请去仓库看 README 和模组契约。</p>
+  </div>
+</header>
+
+<div class="wrap docs-layout">
+  <aside class="toc" aria-label="本页目录">
+    <b>目录</b>
+    <a href="#install">安装</a>
+    <a href="#first-run">第一次打开</a>
+    <a href="#data">数据与存档</a>
+    <a href="#modules">模组</a>
+    <a href="#senses">耳目</a>
+    <a href="#voice">语音</a>
+    <a href="#problems">出问题</a>
+    <a href="#uninstall">卸载</a>
+    <a href="#limits">已知限制</a>
+  </aside>
+
+  <main class="doc-body">
+    <section class="doc-section" id="install">
+      <h2>安装</h2>
+      <p>0.5.8 是 Windows 10/11 64 位的内测包，未签名。</p>
+      <ol>
+        <li>请你从 <a href="https://github.com/Chanko-bab/BetterAIBridge/releases/latest">GitHub Release</a> 下载 <code>BetterAIBridge-Setup-0.5.8.exe</code>。</li>
+        <li>如果 SmartScreen 拦截，请点“更多信息 → 仍要运行”。安装包未签名，这是预期行为。</li>
+        <li>请你选安装目录。默认是 <code>%LOCALAPPDATA%\BetterAIBridge 0.5.8</code>，可以改。</li>
+        <li>请等依赖下载完，通常 5–15 分钟。请不要中途关窗口。</li>
+      </ol>
+      <div class="callout">
+        <strong>从 0.4.x 升级：</strong>请先导出存档，再装 0.5.8。请不要直接覆盖你正在用的旧目录。
+      </div>
+    </section>
+
+    <section class="doc-section" id="first-run">
+      <h2>第一次打开</h2>
+      <p>你会在向导里依次填：称呼、API Key、模型、智能体的名字/性别/自称、性格底子。</p>
+      <ul>
+        <li><strong>没有 Key 不能完成创建。</strong>0.5.8 没有“跳过”；没 Key 的智能体不能用。</li>
+        <li>请用推荐 DeepSeek，<code>https://platform.deepseek.com</code>；充少量金额即可。</li>
+        <li>建好后，请把右上角切到 <strong>在线</strong>，在输入框里说第一句话。</li>
+        <li>第一次回复可能等 10–30 秒：内核要启动，模型要连接。</li>
+      </ul>
+      <p>点窗口的 × 会收进托盘；你可以从托盘图标再打开。要真正退出，请用托盘菜单里的“退出程序”。</p>
+    </section>
+
+    <section class="doc-section" id="data">
+      <h2>数据与存档</h2>
+      <p>人格、记忆、情绪、自我和状态都在安装目录：</p>
+      <pre><code>安装目录\
+  WiseEntity\entity\        ← 人格、记忆、情绪、自我
+  WiseEntity\runtime\logs\  ← 内核日志
+  logs\                     ← 启动器日志</code></pre>
+      <p><strong>卸载会删除整个程序目录，包括 <code>entity</code>。</strong>请在卸载前导出存档。</p>
+      <h3>导出 / 导入</h3>
+      <ul>
+        <li>请在设置 → 存档 → 导出，会生成一个 <code>.babpak</code>。</li>
+        <li>默认<strong>不带 API Key</strong>；只有你勾选后才会把 Key 放进存档，请不要随手发给别人。</li>
+        <li>导入无 Key 的存档时，会请你现在填 Key；取消就中止，不会落一个不能用的智能体。</li>
+      </ul>
+    </section>
+
+    <section class="doc-section" id="modules">
+      <h2>模组</h2>
+      <p>0.5.8 安装完<strong>没有任何模组</strong>。这是故意的，不是装坏了。</p>
+      <ol>
+        <li>请点左侧「模组」→「外部导入」，选 <code>.pbab</code> 文件。</li>
+        <li>装完请点「启用」。M 是框架，pre 是一次性前置，B 站/QQ 是桥。</li>
+        <li>B 站/QQ 的真实登录聊天还没实测，请先不要拿主号试。</li>
+      </ol>
+      <div class="callout red">
+        <strong>安全边界：</strong>模组是能执行代码的程序；pre 模组按设计可以修改任意路径。
+        请只导入你信任的包。pre 会先整包备份并写审计，但不会逐次弹窗确认。
+      </div>
+      <p><a href="modules.html">看当前可用的模组 →</a></p>
+    </section>
+
+    <section class="doc-section" id="senses">
+      <h2>耳目</h2>
+      <p>请在设置 → 耳目里打开。默认关闭，全部需要你明确打开。</p>
+      <ul>
+        <li><strong>主动偷看 / 偷听：</strong>你可以让它偶尔看一眼、听一下；保姆栏会出现「智能体刚刚偷偷看了你一眼。」这样的旁白。</li>
+        <li><strong>一直看着 / 一直听着：</strong>独立频率。看默认每 120 秒，听默认每 180 秒、每次 4 秒；可以改。</li>
+        <li>间隔越短、听得越久，模型和语音调用越频繁，费用和电量消耗越快。</li>
+        <li>智能体看到/听到的内容会进入最近的感知，聊天时可以接“我刚刚看到你回来了”。</li>
+      </ul>
+      <p>你不想让智能体看/听时，关掉总开关即可；关掉后不会在后台采集。</p>
+    </section>
+
+    <section class="doc-section" id="voice">
+      <h2>语音</h2>
+      <p>默认用 edge-tts，免费、在线、速度快。你可以在聊天框右上角点「朗读」。</p>
+      <p>你可以在设置 → 声音里选「本地 MOSS（需下载，CPU）」：</p>
+      <ul>
+        <li>下载约 1.3 GB，装到安装目录的 <code>local_tts\</code>；装好才能保存/试听。</li>
+        <li>CPU 合成，10 字约 5 秒、50 字约 14 秒、150 字约 49 秒；同句第二次走缓存。</li>
+        <li>失败会自动回退 edge，不会把聊天卡死。</li>
+      </ul>
+    </section>
+
+    <section class="doc-section" id="problems">
+      <h2>出问题怎么报</h2>
+      <ol>
+        <li>请你截整个窗口，把左下角状态、保姆栏一起截进去。</li>
+        <li>请在设置 → <strong>导出诊断包</strong>，桌面会生成 <code>BAB诊断-日期-时间.zip</code>；Key/Bearer/桥令牌会打码。</li>
+        <li>请把「截图 + 诊断包 + 当时在做什么」一起发给我。</li>
+      </ol>
+      <h3>常见现象</h3>
+      <ul>
+        <li><strong>双击没反应：</strong>请看 <code>安装目录\logs\launcher-boot.log</code>、<code>startup-error.log</code>。</li>
+        <li><strong>连不上模型：</strong>请检查 Key、余额，或是否需要代理。</li>
+        <li><strong>一直提示没配 Key：</strong>请去设置 → 更改 API Key。</li>
+        <li><strong>语音没声：</strong>请先试 edge；本地 MOSS 要等模型加载。</li>
+      </ul>
+    </section>
+
+    <section class="doc-section" id="uninstall">
+      <h2>卸载</h2>
+      <p>请在设置 → 卸载，或 Windows 设置里的“应用和功能”。</p>
+      <ul>
+        <li><strong>请先导出存档</strong>；卸载会删除程序目录里的 <code>entity</code>。</li>
+        <li>如果提示“还有文件没删干净”，通常是程序/杀软还占用着；请关掉再试，或手动删目录。</li>
+        <li>你会看到卸载器的“代码 -1”弹窗，这是强停启动器导致的；点确定后卸载会继续，不影响安装目录外的存档。</li>
+      </ul>
+    </section>
+
+    <section class="doc-section" id="limits">
+      <h2>已知限制</h2>
+      <ul>
+        <li>0.5.8 不捆绑模组；B 站/QQ 登录未实测；M/pre 只做了契约测试。</li>
+        <li>未签名；SmartScreen 会拦。</li>
+        <li>没有自动更新；检查更新默认不连服务器。</li>
+        <li>API Key 在本地明文保存；请用单独的、限额的 Key。</li>
+        <li>内核有本机 token，但挡不住同一用户下的恶意程序。</li>
+        <li>本地 MOSS 慢、占内存；没有 GPU 加速。</li>
+        <li>高 DPI 未全量实测；4K/150% 下个别窗口可能挤。</li>
+        <li>只有 Windows；会崩、会丢记忆、会说胡话，别把重要的事只告诉智能体。</li>
+      </ul>
+      <p><a href="https://github.com/Chanko-bab/BetterAIBridge/issues">遇到问题，请去 GitHub Issues →</a></p>
+    </section>
+  </main>
+</div>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <span>© 2026 琛柯（Chanko）· MIT License</span>
+    <span>
+      <a href="https://github.com/Chanko-bab/BetterAIBridge">GitHub</a> ·
+      <a href="index.html">首页</a> ·
+      <a href="modules.html">模组</a> ·
+      <a href="developers.html">开发</a>
+    </span>
+    <span class="fine">0.5.8 内测文档 · 本站为本地预览，链接在仓库上线后生效</span>
+  </div>
+</footer>
+
+</body>
+</html>

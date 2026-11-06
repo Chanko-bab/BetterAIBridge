@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>成为模组开发者 —— BetterAIBridge</title>
+  <meta name="description" content="给 BetterAIBridge 做模组：GitHub 账号即身份，提交、署名、移交、下架都由开发者自己决定。">
+  <link rel="icon" href="assets/bab-64.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="nav" aria-label="主导航">
+  <div class="wrap nav-inner">
+    <a class="brand" href="index.html">
+      <img src="assets/bab-40.png" alt="">
+      <span>BetterAIBridge<small>BETTER AI BRIDGE</small></span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html">首页</a>
+      <a href="modules.html">模组</a>
+      <a href="developers.html" aria-current="page">开发</a>
+      <a href="docs.html">文档</a>
+      <a class="nav-cta" href="https://github.com/Chanko-bab/BetterAIBridge/releases/latest">下载 0.5.8</a>
+    </div>
+  </div>
+</nav>
+
+<header class="page-hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span> 模组开发者</span>
+    <h1>成为模组开发者</h1>
+    <p>上传、署名、移交、下架，都用你的 GitHub 账号说话。</p>
+  </div>
+</header>
+
+<main class="section">
+  <div class="wrap">
+
+    <div class="cta-row" style="margin:0 0 28px;">
+      <a class="btn btn-primary" href="https://github.com/Chanko-bab/BetterAIBridge/issues/new?template=module_submit.yml">上传自己的模组</a>
+      <a class="btn btn-ghost" href="https://github.com/Chanko-bab/BetterAIBridge/issues/new?template=module_manage.yml">管理已有模组</a>
+    </div>
+
+    <div class="dev-grid">
+      <article class="dev-card">
+        <span class="dev-num">01 · 准备</span>
+        <h3>先做成一个能装上的包</h3>
+        <p>你上传的 <code>.pbab</code>，至少包含：</p>
+        <ul>
+          <li><code>module.json</code>：id、版本、kind、权限</li>
+          <li><code>introduce.md</code>：模组做什么、改了哪里</li>
+          <li><code>connection.json</code>：需要哪些桥能力</li>
+          <li><code>settings.schema.json</code>：设置项</li>
+        </ul>
+      </article>
+
+      <article class="dev-card">
+        <span class="dev-num">02 · 提交</span>
+        <h3>用 GitHub 发 Release</h3>
+        <p>请把包传到 GitHub Release 的 Assets，不要塞进仓库历史。</p>
+        <p style="margin-top:8px;">然后请开一个「提交模组」Issue，填 Release 链接、署名方式和权限说明。</p>
+      </article>
+
+      <article class="dev-card">
+        <span class="dev-num">03 · 审核</span>
+        <h3>维护者会拆包检查</h3>
+        <p>校验包结构、entry、权限和文档；pre 模组还会重点看会写哪些路径。</p>
+        <p style="margin-top:8px;">通过后进模组页。被拒会说明原因，不会悄悄下掉。</p>
+      </article>
+
+      <article class="dev-card">
+        <span class="dev-num">04 · 归属</span>
+        <h3>署名归你，责任也归你</h3>
+        <p>模组页会显示你的 GitHub 账号，或「匿名」。</p>
+        <p style="margin-top:8px;">无论是否匿名，提交用的 GitHub 账号都对维护者可见，用于安全、移交和下架。</p>
+      </article>
+    </div>
+
+    <section class="section tight" style="padding:46px 0 8px;">
+      <span class="kicker">身份</span>
+      <h2 style="font-size:30px;margin:8px 0 10px;">两种署名，同一套责任</h2>
+      <p style="color:var(--muted);font-size:14px;margin:0 0 18px;">没有独立账号系统。你的 GitHub 账号就是开发者身份。</p>
+
+      <div class="dev-grid">
+        <article class="dev-card">
+          <div class="identity-row">
+            <span class="dev-badge">@your-handle</span>
+            <span class="dev-badge" style="background:#f4f7f4;color:#356044;">署名发布</span>
+          </div>
+          <h3>公开 GitHub 账号</h3>
+          <p>模组页显示账号和主页链接。读者能顺着账号找到你的其他项目，也能看到你的提交记录。</p>
+        </article>
+
+        <article class="dev-card">
+          <div class="identity-row">
+            <span class="dev-badge anon">匿名</span>
+            <span class="dev-badge" style="background:#f4f7f4;color:#356044;">匿名发布</span>
+          </div>
+          <h3>不公开账号</h3>
+          <p>模组页只写「匿名」。维护者仍知道是哪个 GitHub 账号提交的，但不会公开。匿名不等于无法追责。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section tight" style="padding:40px 0 8px;">
+      <span class="kicker">你的权利</span>
+      <h2 style="font-size:30px;margin:8px 0 10px;">你的模组，你说了算</h2>
+      <p style="color:var(--muted);font-size:14px;margin:0 0 18px;">下面这些操作，你都通过「管理已有模组」Issue 发起。维护者只做校验和登记，不替你做决定。</p>
+
+      <div class="table-wrap">
+        <table class="rights">
+          <thead>
+            <tr><th>操作</th><th>谁可以发起</th><th>怎么走</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>更新版本</td>
+              <td>所有者</td>
+              <td>请你发新 Release，提管理 Issue 选「更新版本」，附版本号和变更。</td>
+            </tr>
+            <tr>
+              <td>移交开发权</td>
+              <td>所有者 + 接手人</td>
+              <td>请双方都在 Issue 里回复确认；维护者核对后改所有者。旧所有者失去管理权。</td>
+            </tr>
+            <tr>
+              <td>下架</td>
+              <td>所有者</td>
+              <td>请你提管理 Issue 选「下架」。模组页移除；已安装的副本和他人 fork 不会消失。</td>
+            </tr>
+            <tr>
+              <td>切换署名 / 匿名</td>
+              <td>所有者</td>
+              <td>请你提管理 Issue 选「改署名」，说明要显示账号还是匿名。</td>
+            </tr>
+            <tr>
+              <td>删除 Release</td>
+              <td>所有者</td>
+              <td>请你在 GitHub Release 页面自己删；下架和删包是两件事。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout" style="margin-top:18px;">
+        <strong>匿名不是隐身。</strong> 匿名只影响模组页展示；提交 Issue 的 GitHub 账号仍对维护者可见。安全事件、移交争议、冒名投诉都会按这个账号追溯。
+      </div>
+    </section>
+
+    <section class="section tight" style="padding:40px 0 8px;">
+      <span class="kicker">审核标准</span>
+      <h2 style="font-size:30px;margin:8px 0 10px;">什么会被拒</h2>
+      <div class="dev-grid">
+        <article class="dev-card">
+          <ul>
+            <li>包里带可执行文件，但 introduce 没说明</li>
+            <li>声明只读，实际写文件或改代码</li>
+            <li>pre 模组不说明会改哪些路径</li>
+            <li>下载器、隐藏更新、捆绑安装</li>
+          </ul>
+        </article>
+        <article class="dev-card">
+          <ul>
+            <li>冒用他人账号或项目名</li>
+            <li>把恶意代码藏进正常功能</li>
+            <li>权限申请远大于实际用途</li>
+            <li>文档、版本、checksums 对不上</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="section tight" style="padding:40px 0 10px;">
+      <span class="kicker">边界</span>
+      <h2 style="font-size:30px;margin:8px 0 10px;">现在为什么是 Issue，不是控制台</h2>
+      <p style="color:var(--muted);font-size:14px;line-height:1.9;max-width:760px;">
+        站点是 GitHub Pages 静态页，没有服务器、没有账号数据库，所以不能直接收上传。
+        现在用 GitHub 账号做身份、Issue 做申请、Release 做分发；维护者人工校验和登记。
+        等社区真的需要自助面板时，再加后端和 OAuth；那时也不改变「开发者拥有自己的模组」这条规则。
+      </p>
+      <p style="color:var(--faint);font-size:12px;line-height:1.9;margin-top:12px;">
+        模组是独立程序，不由安装包签名。装之前请先看 introduce 和 connection；请只装你信任的来源。
+      </p>
+    </section>
+
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <span>© 2026 琛柯（Chanko）· MIT License</span>
+    <span>
+      <a href="https://github.com/Chanko-bab/BetterAIBridge">GitHub</a> ·
+      <a href="index.html">首页</a> ·
+      <a href="modules.html">模组</a> ·
+      <a href="docs.html">文档</a>
+    </span>
+    <span class="fine">开发者身份 = GitHub 账号 · 本站为本地预览，Issue 模板在仓库上线后生效</span>
+  </div>
+</footer>
+
+</body>
+</html>

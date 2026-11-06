@@ -1,0 +1,9 @@
+# 语音转写要用的引擎（只在第一次用之前装一次）
+#
+#   cd capability\voice\asr
+#   python -m venv .venv
+#   .venv\Scripts\python.exe -m pip install -r requirements.txt
+#
+# 装完以后服务会自动用 .venv\Scripts\python.exe；
+# 模型第一次转写时才下载（small 约 480 MB，落在 models/ 里）。
+faster-whisper>=1.0.3

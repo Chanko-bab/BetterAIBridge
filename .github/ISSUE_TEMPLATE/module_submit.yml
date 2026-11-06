@@ -1,0 +1,109 @@
+name: 提交模组
+description: 把一个 .pbab 模组提交上架到 BetterAIBridge
+title: "[模组提交] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        先确认：包已经用 0.5.0 试装过，`introduce.md` 写清了它会读写什么。
+        不要把安装包或模型塞进这个 Issue；把 `.pbab` 传到 GitHub Release，这里只填链接。
+
+  - type: input
+    id: module_id
+    attributes:
+      label: 模组 id
+      description: 和 module.json 里的 id 一致，例如 m_framework
+      placeholder: my_module
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本
+      placeholder: 0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: display_name
+    attributes:
+      label: 显示名称
+      placeholder: 我的模组
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 类型
+      options:
+        - bridge（普通桥接）
+        - pre（前置，会改环境/代码）
+    validations:
+      required: true
+
+  - type: dropdown
+    id: identity
+    attributes:
+      label: 公开署名
+      options:
+        - 显示 GitHub 账号
+        - 匿名
+    validations:
+      required: true
+
+  - type: input
+    id: handle
+    attributes:
+      label: 要公开的 GitHub 账号
+      description: 选匿名可以留空；维护者仍能看到提交 Issue 的账号
+      placeholder: "@your-handle"
+
+  - type: input
+    id: release_url
+    attributes:
+      label: Release 链接
+      description: 指向包含 .pbab 的 GitHub Release
+      placeholder: https://github.com/you/repo/releases/tag/v0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: repo_url
+    attributes:
+      label: 源码仓库（可选）
+      placeholder: https://github.com/you/repo
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 它做什么
+      description: 一两句话；用户装之前会看
+      placeholder: 把某个平台的消息接进智能体。
+    validations:
+      required: true
+
+  - type: textarea
+    id: permissions
+    attributes:
+      label: 权限和写入范围
+      description: 列出 bridge.wants、会写哪些目录/文件、是否会改代码
+      placeholder: |
+        bridge.wants: sense.devices, notice.push
+        写入: 无
+        读取: 无
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 确认
+      options:
+        - label: 我已在 0.5.0 上试装过这个包
+          required: true
+        - label: 我没有隐瞒包里的可执行文件、下载器或写文件行为
+          required: true
+        - label: 我同意维护者拆包检查；被拒时接受说明
+          required: true

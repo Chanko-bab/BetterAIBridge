@@ -1,0 +1,46 @@
+# BetterAIBridge (BAB) —— 用户配置（安装时按实际目录生成；改完重启生效）
+project_root: {{APP_DIR}}\WiseEntity
+# 只允许这个目录被本程序写入（模组装卸）；其余路径一律只读
+bundle_dir: {{APP_DIR}}\program_bundle
+# 卸下来的模组放在这里（QQ 桥、B 站）
+modules_dir: {{APP_DIR}}\program_cache
+core_url: http://127.0.0.1:{{CORE_PORT}}
+# 「检查更新」按钮打开的下载页；留空则提示还没配置
+update_url: ""
+# 脚本入口（服务编排只调用它们，不重写逻辑）
+start_all: {{APP_DIR}}\WiseEntity\source_code\scripts\start-all.ps1
+stop_all: {{APP_DIR}}\WiseEntity\source_code\scripts\stop-all.ps1
+start_core: {{APP_DIR}}\WiseEntity\source_code\scripts\start-core.cmd
+start_asr: {{APP_DIR}}\WiseEntity\capability\voice\asr\start-asr.cmd
+logs_dir: {{APP_DIR}}\WiseEntity\runtime\logs
+ports:
+  core: {{CORE_PORT}}
+  asr: {{ASR_PORT}}
+ui:
+  window_title: BetterAIBridge
+  start_page: chat
+  refresh_ports_ms: 3000
+  refresh_state_ms: 5000
+  # 上次退出时的窗口大小（宽, 高），启动时恢复
+  window_size: [1180, 780]
+  # 界面字体：留空用系统默认（微软雅黑）；字号 12–18，改完重启生效
+  font_family: ""
+  font_size: 13
+  # 聊天区背景：默认用内置白底图；enabled/effect(blobs|gradient|dots)/follower(off|glow|trail|particles)
+  background:
+    enabled: true
+    effect: blobs
+    follower: glow
+    palette: light
+    click: true
+    # ripple=扩散圈 / double=双环 / spark=星火 / bubble=气泡
+    click_style: ripple
+    # 底图：effects=动态效果（effect 那几种）/ image=本地图片 / video=本地视频
+    source: image
+    # 留空 = 用内置 assets/bab-bg.jpg
+    media: ""
+    speed: 1.0
+    opacity: 1.0
+chat:
+  session: web:owner
+  timeout_s: 90

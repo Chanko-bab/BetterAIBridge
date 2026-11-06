@@ -1,0 +1,8 @@
+# 只要 QtWidgets / QtGui / QtCore，用 Essentials 就够；
+# 直接用 PySide6 会把 Addons（几百 MB）一起拖下来，第一次装会很慢。
+# 上界只防大版本破坏；升级时先跑 tools/check.py。
+PySide6-Essentials>=6.12.0,<6.13
+shiboken6>=6.12.0,<6.13
+httpx>=0.27,<0.30
+PyYAML>=6.0,<7
+psutil>=5.9,<8

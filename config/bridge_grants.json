@@ -1,0 +1,7 @@
+{
+  "modules": {
+    "bili_bridge": {
+      "deny": []
+    }
+  }
+}

@@ -1,0 +1,7 @@
+# 上界只防大版本破坏；升级时先跑 tools/check.py。
+fastapi>=0.110,<1
+uvicorn>=0.29,<1
+httpx>=0.27,<0.30
+numpy>=1.26,<3
+pydantic>=2.6,<3
+edge-tts>=7.0,<8

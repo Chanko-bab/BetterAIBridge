@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "provides": {
+    "tools": [],
+    "persona": "persona.md",
+    "events": [],
+    "status": [],
+    "endpoints": []
+  },
+  "memory": { "program": "program_template", "scopes": ["owner"] }
+}

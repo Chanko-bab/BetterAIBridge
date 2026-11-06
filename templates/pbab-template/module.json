@@ -1,0 +1,19 @@
+{
+    "format": "pbab/1",
+    "api": 1,
+    "id": "__ID__",
+    "name": "__NAME__",
+    "version": "0.1.0",
+    "author": "琛柯",
+    "kind": "capability",
+    "summary": "__SHORT__",
+    "description": "__NAME__ 是一个 BAB 模组：装上之后，她多一件能做的事。",
+    "homepage": "",
+    "payload": { "mode": "embedded" },
+    "entry": { "start": "start.cmd" },
+    "health": { "type": "port", "host": "127.0.0.1", "port": __PORT__, "timeout_s": 25 },
+    "ports": [__PORT__],
+    "links": {},
+    "memory": { "program": "program___ID__", "scopes": ["owner", "friend", "group"] },
+    "bridge": { "wants": [], "subscribes": [] }
+}

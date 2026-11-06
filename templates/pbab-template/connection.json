@@ -1,0 +1,18 @@
+{
+    "provides": {
+        "kind": "capability",
+        "tools": [
+            {
+                "name": "__ID___ping",
+                "endpoint": "ping",
+                "method": "GET",
+                "desc": "活着吗？回一句「在」。做新工具时照着这条加：改名、改 endpoint、写清参数。",
+                "args": { "word": "string?" },
+                "max_seconds": 10
+            }
+        ],
+        "endpoints": [
+            { "name": "ping", "path": "/ping", "method": "GET" }
+        ]
+    }
+}

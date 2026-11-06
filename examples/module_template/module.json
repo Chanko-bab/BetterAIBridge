@@ -1,0 +1,31 @@
+{
+  "format": "pbab/1",
+  "api": 1,
+  "id": "module_template",
+  "name": "示例模组",
+  "version": "0.1.0",
+  "kind": "capability",
+  "summary": "一个什么也不做的示例：照着它改就能做出自己的模组。",
+  "author": "你的名字",
+  "homepage": "https://example.com/your-module",
+  "payload": {
+    "mode": "embedded"
+  },
+  "entry": {
+    "start": "start.cmd"
+  },
+  "ports": [],
+  "links": {},
+  "memory": {
+    "program": "program_template",
+    "scopes": [
+      "owner"
+    ]
+  },
+  "bridge": {
+    "wants": [],
+    "subscribes": [],
+    "events": "pull",
+    "events_endpoint": "/events"
+  }
+}

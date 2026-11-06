@@ -1,0 +1,59 @@
+{
+  "programs": [
+    {
+      "name": "webchat",
+      "title": "对话窗口",
+      "what": "常驻内核，跟她说话、记事、翻记忆",
+      "entry": "http://127.0.0.1:40720/",
+      "can": [
+        "聊天",
+        "记忆"
+      ],
+      "cant": []
+    },
+    {
+      "name": "voice",
+      "title": "语音",
+      "what": "语音转文字（可选，装了 faster-whisper 才有）",
+      "entry": "",
+      "can": [],
+      "cant": []
+    },
+    {
+      "name": "vision",
+      "title": "看图",
+      "what": "图片理解（模型支持多模态时可用）",
+      "entry": "",
+      "can": [],
+      "cant": []
+    },
+    {
+      "name": "web_bridge",
+      "title": "上网桥",
+      "what": "给她一条只读的网线：能把网页读成干净文字，也能搜几条结果回来。",
+      "entry": "http://127.0.0.1:40730/",
+      "can": [
+        "web_fetch",
+        "web_search"
+      ],
+      "cant": []
+    },
+    {
+      "name": "bili_bridge",
+      "title": "B 站桥",
+      "what": "让智能体在 B 站上看东西、也能在「使用者点头」之后点赞/收藏/给互关认识的人发私信。写操作默认全关，执行前必过待批队列。",
+      "entry": "http://127.0.0.1:40731/",
+      "can": [
+        "bili_me",
+        "bili_video",
+        "bili_search",
+        "bili_notifications",
+        "bili_like",
+        "bili_fav",
+        "bili_dm",
+        "bili_profile"
+      ],
+      "cant": []
+    }
+  ]
+}

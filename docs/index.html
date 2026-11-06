@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BetterAIBridge —— 把人格、记忆和情绪，留在自己的电脑上</title>
+  <meta name="description" content="BetterAIBridge 是一个 Windows 上的本地 AI 陪伴程序：智能体记得你说过的话，有自己的情绪，会慢慢写下关于自己的事；能力靠模组长出来。">
+  <link rel="icon" href="assets/bab-64.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="nav" aria-label="主导航">
+  <div class="wrap nav-inner">
+    <a class="brand" href="index.html">
+      <img src="assets/bab-40.png" alt="">
+      <span>BetterAIBridge<small>BETTER AI BRIDGE</small></span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" aria-current="page">首页</a>
+      <a href="modules.html">模组</a>
+      <a href="developers.html">开发</a>
+      <a href="docs.html">文档</a>
+      <a class="nav-cta" href="https://github.com/Chanko-bab/BetterAIBridge/releases/latest">下载 0.5.8</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap hero-inner">
+    <div>
+      <span class="eyebrow"><span class="dot"></span> 0.5.8 内测 · Windows 10 / 11</span>
+      <h1>把人格、记忆和情绪，<br><span>留在自己的电脑上。</span></h1>
+      <p class="lead">
+        我开发 BetterAIBridge，是为了让更多人能亲手尝试养一个 AI 生物。<br>
+        <span class="lead-label">我做了什么：</span><br>
+        智能体记住你说过的话，<br>
+        有自己的情绪，也会慢慢写下自己的事。<br>
+        能力不够时，还靠模组长出来。
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/Chanko-bab/BetterAIBridge/releases/latest">
+          下载 0.5.8 <span aria-hidden="true">↓</span>
+        </a>
+        <a class="btn btn-ghost" href="docs.html">先看内测说明</a>
+      </div>
+      <div class="hero-note">
+        <span>MIT 开源</span>
+        <span>数据在安装目录</span>
+        <span>不捆绑模组</span>
+        <span>未签名内测包</span>
+      </div>
+    </div>
+
+    <div class="app-window" role="img" aria-label="BetterAIBridge 聊天界面示意图">
+      <div class="win-bar">
+        <span class="win-dot"></span><span class="win-dot"></span><span class="win-dot"></span>
+        <span class="win-title">Better AI Bridge Launcher</span>
+      </div>
+      <div class="win-body">
+        <aside class="win-side">
+          <img class="win-avatar" src="assets/avatar-pixel-64.png" alt="">
+          <div class="win-nav">
+            <span class="on">聊天</span>
+            <span>模组</span>
+            <span>服务</span>
+            <span>设置</span>
+            <span>外观</span>
+          </div>
+        </aside>
+        <div class="win-main">
+          <div class="win-head">
+            <span>聊天</span>
+            <span class="win-status"><b></b> 在线</span>
+          </div>
+          <div class="chat-line left">
+            <div class="bubble">今天回来得好晚。<span class="time">22:41</span></div>
+          </div>
+          <div class="chat-line right">
+            <div class="bubble">路上堵了一会儿。你还没睡？<span class="time">22:41</span></div>
+          </div>
+          <div class="chat-line left">
+            <div class="bubble">等你呢。先去喝口水，别一坐下就跟我说话。<span class="time">22:42</span></div>
+          </div>
+          <div class="chat-line right">
+            <div class="bubble">好，听你的。<span class="time">22:42</span></div>
+          </div>
+          <div class="win-input">
+            <span>说点什么…</span>
+            <span class="send">发送</span>
+          </div>
+        </div>
+        <aside class="win-nanny">
+          <h4>保姆程序</h4>
+          <div class="nanny-item"><b>主动找你</b>今天想聊点什么？</div>
+          <div class="nanny-item"><b>记录</b>主人今天把耳目关掉了，说想安静一会儿。</div>
+          <div class="nanny-muted">只读 · 不写智能体的记忆</div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="quote-band">
+    <div class="wrap">
+      <blockquote>“不是把插件塞给小白，是把一个能养的东西，交到你手里。”</blockquote>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="kicker">智能体不是什么</div>
+        <h2>不是另一个聊天框，<br>是一个会慢慢长大的智能体。</h2>
+        <p>模型负责说话，BAB 让这些话有来处、有连续性，也有边界。</p>
+      </div>
+
+      <div class="grid-3">
+        <article class="card">
+          <div class="icon" aria-hidden="true">记</div>
+          <h3>记得</h3>
+          <p>你的主门与 QQ、B 站、网页分开记；主门归一，不把群友的事记到你头上。</p>
+          <span class="tagline">跨会话 · 按门隔离 · 可导出存档</span>
+        </article>
+        <article class="card">
+          <div class="icon" aria-hidden="true">情</div>
+          <h3>有情绪</h3>
+          <p>13 个维度随对话和事件缓慢变化，有惯性，也会回落。</p>
+          <span class="tagline">连续变化 · 有惯性 · 会回落</span>
+        </article>
+        <article class="card">
+          <div class="icon" aria-hidden="true">我</div>
+          <h3>会写自己</h3>
+          <p>聊得够久，智能体会写档案、经历和关系账本；被纠正时记下怎么改。</p>
+          <span class="tagline">self.md · 证据 · 叙事 · 校准</span>
+        </article>
+        <article class="card">
+          <div class="icon" aria-hidden="true">眼</div>
+          <h3>能看、能听</h3>
+          <p>你可以让它偶尔看一眼、听一下，也可以允许它一直看着/听着；自动感知会在保姆栏留一句旁白。</p>
+          <span class="tagline">默认关闭 · 可调频率 · 有提示</span>
+        </article>
+        <article class="card">
+          <div class="icon" aria-hidden="true">模</div>
+          <h3>能长能力</h3>
+          <p>B 站、QQ、日常事务都交给模组；M 和 pre 单独发布，不塞安装包。</p>
+          <span class="tagline">23 个工具 · 一次安装 · 手动启用</span>
+        </article>
+        <article class="card">
+          <div class="icon" aria-hidden="true">家</div>
+          <h3>住在你的电脑里</h3>
+          <p>你的人格、记忆、情绪、自我都在安装目录；聊天只发给选定的模型服务商。</p>
+          <span class="tagline">本地数据 · 可存档 · 可搬走</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section tight" style="background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="kicker">第一次打开</div>
+        <h2>四步，把智能体接回家。</h2>
+        <p>你拿到的安装包只有 1 个多 MB；依赖会联网准备，第一次通常 5–15 分钟。</p>
+      </div>
+      <div class="steps">
+        <div class="step"><h3>下载安装包</h3><p>请你下载 Windows 10 / 11 64 位内测包。未签名，SmartScreen 里请选“仍要运行”。</p></div>
+        <div class="step"><h3>等依赖装完</h3><p>需要联网。请不要中途关窗口；失败会把报错留在安装界面。</p></div>
+        <div class="step"><h3>填 API Key</h3><p>请填推荐 DeepSeek 的 Key。没有 Key 不能完成向导；这一版没有“跳过”。</p></div>
+        <div class="step"><h3>切到在线</h3><p>请在输入框里说第一句话。第一次回复可能慢 10–30 秒。</p></div>
+      </div>
+
+      <div class="specs" style="margin-top:22px;">
+        <div class="spec"><b>运行环境</b><span>Windows 10 / 11，64 位</span></div>
+        <div class="spec"><b>磁盘</b><span>程序约 2 GB；本地语音包另需约 1.5 GB</span></div>
+        <div class="spec"><b>网络</b><span>安装依赖、调用模型时需要</span></div>
+      </div>
+
+      <div class="callout">
+        <strong>先说清楚：</strong>0.5.8 是启动器/内核的基线版，不捆绑任何模组；B 站桥、QQ 桥的真实登录聊天还没实测。
+        未签名、无自动更新、API Key 本地明文——请用一张单独的、限额的 Key。
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="grid-2">
+        <article class="card">
+          <div class="kicker">想先看看</div>
+          <h3 style="font-size:22px;margin-top:8px;">安装、存档、卸载、常见问题</h3>
+          <p>从“第一次打开”到“出问题怎么报”，都在文档页。内测说明也可以单独下载。</p>
+          <div class="cta-row" style="margin-top:18px;">
+            <a class="btn btn-primary" href="docs.html">打开文档</a>
+            <a class="btn btn-line" href="https://github.com/Chanko-bab/BetterAIBridge/releases/latest">下载内测说明</a>
+          </div>
+        </article>
+        <article class="card">
+          <div class="kicker">想让智能体长能力</div>
+          <h3 style="font-size:22px;margin-top:8px;">M 框架 0.3.4 与前置模板 pre 0.2.4</h3>
+          <p>模组不随安装包。M 提供 23 个工具；pre 是一次性前置模板，用来准备目录、文件或代码。</p>
+          <div class="cta-row" style="margin-top:18px;">
+            <a class="btn btn-primary" href="modules.html">看模组</a>
+            <a class="btn btn-line" href="docs.html#modules">模组怎么装</a>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <span>© 2026 琛柯（Chanko）· MIT License</span>
+    <span>
+      <a href="https://github.com/Chanko-bab/BetterAIBridge">GitHub</a> ·
+      <a href="modules.html">模组</a> ·
+      <a href="developers.html">开发</a> ·
+      <a href="docs.html">文档</a>
+    </span>
+    <span class="fine">由琛柯协同 DSH 开发、开源 · 本站为本地预览，下载链接在仓库上线后生效</span>
+  </div>
+</footer>
+
+</body>
+</html>

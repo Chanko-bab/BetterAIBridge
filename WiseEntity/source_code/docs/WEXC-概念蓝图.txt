@@ -1,0 +1,46 @@
+D:\BetterAIBridge\WiseEntity
+├─ brain                      # AI核心大脑模块
+│  ├─ config                  # 核心配置文件夹
+│  │  ├─ api_key              # 各类大模型API密钥存放
+│  │  └─ console              # 情绪控制台、运行参数配置
+│  ├─ emotion                 # 情绪管理子模块
+│  └─ runtime                 # 大脑运行时缓存
+│
+├─ memory                     # 记忆模块（记录做过什么、文件位置、历史交互）
+│  ├─ record                  # 行为日志、实时输入记录
+│  ├─ file_index              # 文件索引表，记录文件存放路径
+│  └─ long_term               # 长期记忆持久化存储
+│
+├─ capability                 # 能力文件模块（对应原图：能力文件）
+│  ├─ internet                # 联网能力包
+│  │  ├─ crawler_plugin       # 网页检索插件
+│  │  ├─ net_config           # 联网代理、请求配置
+│  │  └─ cache                # 网络请求缓存
+│  └─ file_ops                # 文件读写能力
+│
+├─ program_bundle             # 能力包程序库（原图：能跑的程序库）
+│  ├─ program_01_qq_bot       # 程序1：QQ机器人
+│  │  ├─ tool_01              # 工具1
+│  │  ├─ tool_02              # 工具2
+│  │  ├─ tool_03              # 工具3
+│  │  └─ runtime_bin          # 运行依赖二进制
+│  ├─ program_02              # 程序2
+│  │  ├─ tool_01              # 工具1
+│  │  ├─ tool_02              # 工具2
+│  │  └─ runtime_bin          # 运行依赖二进制
+│  └─ program_03              # 程序3
+│     └─ runtime_bin
+│
+├─ workspace                  # 自己的空间（用户工作区）
+│  ├─ user_input              # 用户输入文件
+│  ├─ output                  # AI输出产物
+│  └─ temp                    # 临时文件
+│
+└─ source_code                # 【最底层】所有编程源码、脚本文件（所有文件夹结束之后才放文件）
+   ├─ main.py                 # 项目主启动程序
+   ├─ brain_core.py           # brain大脑核心代码
+   ├─ memory_manager.py       # 记忆管理代码
+   ├─ internet_api.py         # 联网能力代码
+   ├─ qq_bot_main.py          # QQ主程序
+   ├─ requirements.txt        # python依赖清单
+   └─ run.bat                 # windows一键启动脚本

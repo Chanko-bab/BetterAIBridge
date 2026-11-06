@@ -1,0 +1,10 @@
+{
+  "api_key": "",
+  "api_base": "https://api.deepseek.com/v1",
+  "model": "deepseek-chat",
+  "entity_name": "PLACEHOLDER",
+  "relation": "主人",
+  "gender": "",
+  "self_call": "我",
+  "style": "温柔共情"
+}
