@@ -3,15 +3,21 @@
 本地优先的桌面 AI 陪伴运行时：壳（PySide6）+ 内核（FastAPI）两个进程。
 人格、记忆、13 维情绪、自我叙事、耳目、模组都在本机；聊天内容只发给用户选择的模型服务商。
 
-**当前版本：0.5.7（2026-11-07）**
+**当前版本：0.5.9（2026-11-07）**
 
 ## 现在是什么状态
 
-- 有安装包：`BetterAIBridge-Setup-0.5.7.exe`（IExpress 自解压，安装目录默认在 `%LOCALAPPDATA%`）。
+- 有安装包：`BetterAIBridge-Setup-0.5.9.exe`（IExpress 自解压，安装目录默认在 `%LOCALAPPDATA%`）。
 - 有源码运行：`setup.cmd` 建壳/内核/语音三个 venv，`start.cmd` 启动。
 - 自检 **71 套**，全量约 130 秒；`build.ps1` 出包前会先跑一遍。
 - 安装目录内的 `WiseEntity/entity/` 是她的数据：人格、记忆、情绪、自我、状态；卸载时默认保留。
 - 不是“另一个聊天壳”：壳只负责窗口和桥，内核负责她是谁、记得什么、现在什么情绪。
+
+## 0.5.9 这一版
+
+- 记忆全读：owner 会话会合并同门与 `external` 记忆（QQ/B 站等），保留来源标签；群聊/好友仍只看自己那本，不会串味。
+- 站点改成 0.5.9，文案更像分享而不是产品说明；默认头像换成像素图，立绘桥不再发布。
+- 其余功能与 0.5.7 相同。
 
 ## 0.5.7 这一版
 
@@ -34,7 +40,7 @@
 
 ### 用安装包
 
-1. 双击 `BetterAIBridge-Setup-0.5.7.exe`，选安装位置。
+1. 双击 `BetterAIBridge-Setup-0.5.9.exe`，选安装位置。
 2. 首次启动跟着向导填名字和 API Key；没有 Key 时向导不会跳过，因为没 Key 的智能体不能用。
 3. 内核端口由安装器从 `40720` 起找空闲，语音从 `40715` 起找；实际值看安装目录的 `config/app.yaml`。
 4. 数据、日志都在安装目录内；卸载时可选择是否保留 `WiseEntity/entity/`。
@@ -119,7 +125,7 @@ BetterAIBridge/
 出包（需要 Windows 的 IExpress）：
 
 ```powershell
-powershell -NoProfile -File packaging\build.ps1 -Version 0.5.6
+powershell -NoProfile -File packaging\build.ps1 -Version 0.5.9
 ```
 
 默认从仓库根读 `VERSION.txt`，产物写到仓库旁的 `dist/`；急着手动出包可加 `-SkipCheck`，
