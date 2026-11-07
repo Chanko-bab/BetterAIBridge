@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import re
+import ssl
 import subprocess
 import tempfile
 import urllib.request
@@ -110,6 +111,11 @@ def is_newer(latest: str, current: str) -> bool:
     return parse_version(latest) > parse_version(current)
 
 
+def _ssl_context() -> ssl.SSLContext:
+    """用系统证书库；certifi 在这台机器上不认企业代理根证书。"""
+    return ssl.create_default_context()
+
+
 def _fetch_json(url: str, timeout: float = 12.0) -> dict:
     try:
         r = httpx.get(
@@ -117,6 +123,7 @@ def _fetch_json(url: str, timeout: float = 12.0) -> dict:
             headers={"User-Agent": USER_AGENT, "Accept": "application/vnd.github+json"},
             timeout=timeout,
             follow_redirects=True,
+            verify=_ssl_context(),
         )
     except httpx.HTTPError as e:
         raise UpdateError(f"连不上 GitHub：{e}") from e
@@ -204,7 +211,7 @@ def sha256_file(path: Path) -> str:
 
 def _open_url(url: str):
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    return urllib.request.urlopen(req, timeout=30)
+    return urllib.request.urlopen(req, timeout=30, context=_ssl_context())
 
 
 def download(
