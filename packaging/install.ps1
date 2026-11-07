@@ -1231,16 +1231,69 @@ function Set-Progress([int]$v, [string]$msg) {
 
 
 
-function New-Shortcut([string]$dir) {
-
-    $desktop = [Environment]::GetFolderPath('Desktop')
-
-    # 旧版快捷方式带版本号；升级时清掉，桌面只留一个 BetterAIBridge。
-    foreach ($pat in @('BetterAIBridgeLauncher *.lnk', 'BetterAIBridgeLauncher.lnk')) {
-        Get-ChildItem -LiteralPath $desktop -Filter $pat -File -ErrorAction SilentlyContinue |
-            Remove-Item -Force -ErrorAction SilentlyContinue
-    }
-
+function Get-ShortcutTarget([string]$path) {
+    try {
+        $ws = New-Object -ComObject WScript.Shell
+        return $ws.CreateShortcut($path).TargetPath
+    } catch { return '' }
+}
+
+function Get-InstalledVersion([string]$dir) {
+    $vf = Join-Path $dir 'VERSION.txt'
+    if (-not (Test-Path -LiteralPath $vf)) { return '' }
+    try {
+        $t = (Get-Content -LiteralPath $vf -Raw -ErrorAction Stop).Trim()
+        if (-not $t) { return '' }
+        $parts = $t -split '\s+'
+        return $parts[$parts.Length - 1]
+    } catch { return '' }
+}
+
+function Move-ShortcutToVersioned([string]$path, [string]$version) {
+    if (-not $version) { return }
+    $new = Join-Path (Split-Path -Parent $path) ("BetterAIBridge " + $version + ".lnk")
+    if (Test-Path -LiteralPath $new) {
+        Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+        return
+    }
+    Rename-Item -LiteralPath $path -NewName (Split-Path -Leaf $new) -Force -ErrorAction SilentlyContinue
+}
+
+function New-Shortcut([string]$dir) {
+    $desktop = [Environment]::GetFolderPath('Desktop')
+    $stable = Join-Path $desktop ($LauncherName + '.lnk')
+    $sameDir = $false
+
+    # 旧版带版本号的启动器快捷方式：还指向有效安装的，迁成 BetterAIBridge <版本>；
+    # 目标已经不存在的才删。
+    foreach ($pat in @('BetterAIBridgeLauncher *.lnk', 'BetterAIBridgeLauncher.lnk')) {
+        Get-ChildItem -LiteralPath $desktop -Filter $pat -File -ErrorAction SilentlyContinue | ForEach-Object {
+            $t = Get-ShortcutTarget $_.FullName
+            $oldDir = if ($t) { Split-Path -Parent $t } else { '' }
+            if ($oldDir -and (Test-Path -LiteralPath (Join-Path $oldDir 'VERSION.txt'))) {
+                Move-ShortcutToVersioned $_.FullName (Get-InstalledVersion $oldDir)
+            } else {
+                Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+
+    # 当前稳定入口指向另一个仍存在的安装：先把它改成带旧版本号的入口，再建新入口。
+    if (Test-Path -LiteralPath $stable) {
+        $t = Get-ShortcutTarget $stable
+        $oldDir = if ($t) { Split-Path -Parent $t } else { '' }
+        if ($oldDir) {
+            try {
+                $sameDir = ([IO.Path]::GetFullPath($oldDir).TrimEnd('\') -ieq [IO.Path]::GetFullPath($dir).TrimEnd('\'))
+            } catch { $sameDir = $false }
+        }
+        if ((-not $sameDir) -and $oldDir -and (Test-Path -LiteralPath (Join-Path $oldDir 'VERSION.txt'))) {
+            Move-ShortcutToVersioned $stable (Get-InstalledVersion $oldDir)
+        } elseif (-not $sameDir) {
+            Remove-Item -LiteralPath $stable -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     $lnkPath = Join-Path $desktop ($LauncherName + '.lnk')
 
     $icon = Join-Path $dir 'assets\bab.ico'
