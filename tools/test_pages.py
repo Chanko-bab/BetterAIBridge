@@ -487,6 +487,24 @@ def main() -> int:
             check(chat_page.nanny.title.cursor().shape() == Qt.PointingHandCursor,
                   "保姆标题是手型")
 
+            # --- 14b. /wake up bab_nanny：拦下来、不发给智能体、叫出保姆本体
+            opened: list[int] = []
+            orig_open = chat_page._open_nanny_chat
+            chat_page._open_nanny_chat = lambda: opened.append(1)  # type: ignore[assignment]
+            try:
+                before = chat_page.msg_lay.count()
+                typing_before = chat_page.typing.text()
+                chat_page._pending = False
+                chat_page.input.setPlainText("/wake up bab_nanny")
+                chat_page.send()
+                pump(60)
+                check(opened == [1], "命令会叫出保姆本体")
+                check(chat_page.msg_lay.count() == before, "命令不进聊天气泡")
+                check(chat_page.input.text() == "", "发完清空输入框")
+                check(chat_page.typing.text() == typing_before, "不会改写「正在输入」")
+            finally:
+                chat_page._open_nanny_chat = orig_open  # type: ignore[assignment]
+
             # --- 15. 一段话放完，「正在输入」就得消掉（0.3.7：一直挂着）
             gate.set()
             chat_page.speak.setChecked(True)

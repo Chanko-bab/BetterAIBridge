@@ -24,7 +24,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
 from . import (auth, brain_box, bridge, chat_core, drives, emotion_core, event_bus, followup,
-               modules_box, tts,
+               modules_box, nanny_chat, tts,
                llm_box, maintenance, memory_box, memory_store, nanny, persona_drift, presence,
                proactive, registry_box, self_reflect, self_store, self_trials, sense,
                settings as S, stomach_box, style_box, tool_bus, tutorial)
@@ -864,6 +864,29 @@ async def nanny_status():
 def nanny_panel_route(limit: int = 120):
     """保姆的小屋：她的状态 + 她自己的独立日志（只读）。"""
     return nanny.panel(limit)
+
+
+class NannyChatIn(BaseModel):
+    session: str = ""
+    text: str = ""
+
+
+@app.post("/nanny/chat/open")
+def nanny_chat_open():
+    """打开一段只读的保姆会话（不写智能体记忆）。"""
+    return nanny_chat.start()
+
+
+@app.post("/nanny/chat")
+async def nanny_chat_say(inp: NannyChatIn):
+    if not str(inp.text or "").strip():
+        raise HTTPException(400, "您还没说事。")
+    return await nanny_chat.chat(inp.session, inp.text)
+
+
+@app.post("/nanny/chat/close")
+def nanny_chat_close(inp: NannyChatIn):
+    return nanny_chat.close(inp.session)
 
 
 @app.post("/nanny/analyze")

@@ -35,6 +35,23 @@ class ChatNannyMixin:
         except Exception as e:  # noqa: BLE001
             self.log.info("保姆小屋打不开：%s", e)
 
+    def _open_nanny_chat(self) -> None:
+        """叫出保姆本体：可对话、只读项目，不写智能体的记忆。"""
+        try:
+            from ..dialogs.nanny_chat import NannyChatWindow
+
+            win = getattr(self, "_nanny_chat", None)
+            if win is not None and win.isVisible():
+                win.raise_()
+                win.activateWindow()
+                return
+            win = NannyChatWindow(parent=self.window())
+            self._nanny_chat = win
+            win.show()
+            win.raise_()
+        except Exception as e:  # noqa: BLE001
+            self.log.info("保姆本体叫不出来：%s", e)
+
     def _on_nanny_collapsed(self, on: bool) -> None:
         """收起时整列让给聊天区，只留右上角一颗浮层按钮；带 180ms 淡出/淡入。"""
         if os.environ.get("BAB_NO_ANIM"):

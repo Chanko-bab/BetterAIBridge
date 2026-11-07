@@ -273,6 +273,15 @@ class CoreClient:
     def nanny_analyze(self, kind: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         return self._post("/nanny/analyze", {"kind": kind, "payload": payload}, timeout=90)
 
+    def nanny_chat_open(self) -> Dict[str, Any]:
+        return self._post("/nanny/chat/open", {}, timeout=20) or {}
+
+    def nanny_chat(self, session: str, text: str) -> Dict[str, Any]:
+        return self._post("/nanny/chat", {"session": session, "text": text}, timeout=120) or {}
+
+    def nanny_chat_close(self, session: str) -> Dict[str, Any]:
+        return self._post("/nanny/chat/close", {"session": session}, timeout=10) or {}
+
     def tutorial_get(self) -> Dict[str, Any]:
         return self._get("/tutorial")
 

@@ -371,6 +371,10 @@ class ChatPage(ChatNannyMixin, QWidget):
         text = self.input.text().strip()
         if not text:
             return
+        if text.strip().lower() == "/wake up bab_nanny":
+            self.input.clear()
+            self._open_nanny_chat()
+            return
         # 她还在念、而且后面还有话没出口：掐掉声音，那几句算没说；只念一句就随它念完
         self._interrupt_speech()
         self.input.clear()

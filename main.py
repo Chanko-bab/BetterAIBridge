@@ -137,6 +137,14 @@ def main() -> int:
     load_theme(app)
     perf.mark("ui.theme")
 
+    # 0.6.4：旧稳定入口 BetterAIBridge.lnk 改名一次（自动更新不跑安装器）。
+    try:
+        from app.services.shortcut import migrate_old_shortcut
+
+        migrate_old_shortcut()
+    except Exception:  # noqa: BLE001
+        LOG.warning("快捷方式改名失败（不影响启动）", exc_info=True)
+
     # 单实例：锁文件放在程序目录，进程退出自动释放；残留锁 30 秒后视为过期
     lock_path = config.DATA_DIR / "launcher.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
