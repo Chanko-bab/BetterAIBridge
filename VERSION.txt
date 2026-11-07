@@ -1,1 +1,1 @@
-﻿BetterAIBridge 0.5.9
+﻿BetterAIBridge 0.6.0

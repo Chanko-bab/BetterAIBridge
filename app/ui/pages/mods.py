@@ -19,9 +19,9 @@ from ..dialogs.module_requires import RequiresDialog
 from ..widgets.see_through import see_through, see_through_widget
 from ..dialogs.module_settings import ModuleSettingsDialog
 
-# 模组市场还没上线，先用这个占位串；上线后只改这一行。
-MARKET_URL = "https://example.com/bab/modules"
-MARKET_HINT = "模组市场还没上线，现在打开的是占位地址；有了会把链接换成真的。"
+# 模组市场用 GitHub Pages 的模组页；Release 里的包也在同一页。
+MARKET_URL = "https://chanko-bab.github.io/BetterAIBridge/modules.html"
+MARKET_HINT = "打开 GitHub Pages 的模组页：看已发布的模组、说明和下载入口。"
 
 STATE_DOT = {
     "enabled": ("●", "#2e9e5b", "运行中"),

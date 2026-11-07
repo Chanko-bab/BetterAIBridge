@@ -1,4 +1,4 @@
-# Build BetterAIBridge self-extracting installer with IExpress.
+﻿# Build BetterAIBridge self-extracting installer with IExpress.
 # ASCII only. Usage: powershell -ExecutionPolicy Bypass -File packaging\build.ps1 [-Version 0.4.59]
 param(
     [string]$Version = '',
@@ -147,6 +147,63 @@ if (Test-Path $Zip) { Remove-Item $Zip -Force }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [System.IO.Compression.ZipFile]::CreateFromDirectory($Stage, $Zip, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 Step ("payload.zip = {0:N0} bytes" -f (Get-Item $Zip).Length)
+
+# ---- 2a. auto-update package + manifest -------------------------------
+# Only code/assets/scripts. User data (persona, memory, config, state, self) never enters.
+Step 'building auto-update zip'
+if (-not (Test-Path $Out)) { New-Item -ItemType Directory -Force -Path $Out | Out-Null }
+$UpdateStage = Join-Path $Pkg 'update-stage'
+$UpdateZip = Join-Path $Out ("BetterAIBridge-$Version-update.zip")
+$ManifestPath = Join-Path $Out 'update.json'
+if (Test-Path $UpdateStage) { Remove-Item -Recurse -Force $UpdateStage }
+New-Item -ItemType Directory -Path $UpdateStage | Out-Null
+
+function Add-UpdateItem([string]$Rel) {
+    $src = Join-Path $Stage $Rel
+    if (-not (Test-Path -LiteralPath $src)) { return }
+    $dest = Join-Path $UpdateStage $Rel
+    New-Item -ItemType Directory -Force -Path (Split-Path $dest) | Out-Null
+    if ((Get-Item -LiteralPath $src).PSIsContainer) {
+        Copy-Item -LiteralPath $src -Destination $dest -Recurse -Force
+    } else {
+        Copy-Item -LiteralPath $src -Destination $dest -Force
+    }
+}
+
+foreach ($rel in @('main.py', 'launch.vbs', 'start.cmd', 'VERSION.txt',
+        'app', 'assets', 'WiseEntity\entity\core', 'WiseEntity\source_code\scripts')) {
+    Add-UpdateItem $rel
+}
+$brainSrc = Join-Path $Stage 'WiseEntity\entity\brain'
+if (Test-Path -LiteralPath $brainSrc) {
+    $brainDst = Join-Path $UpdateStage 'WiseEntity\entity\brain'
+    New-Item -ItemType Directory -Force -Path $brainDst | Out-Null
+    Get-ChildItem -LiteralPath $brainSrc -File | Where-Object { $_.Extension -in @('.py', '.md') } | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $brainDst $_.Name) -Force
+    }
+}
+# do not ship caches/logs inside app or scripts
+Get-ChildItem -LiteralPath $UpdateStage -Recurse -Directory -Force |
+    Where-Object { $_.Name -in @('__pycache__', 'logs', 'runtime') } |
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+Get-ChildItem -LiteralPath $UpdateStage -Recurse -File -Force |
+    Where-Object { $_.Extension -in @('.pyc', '.pyo') } |
+    Remove-Item -Force -ErrorAction SilentlyContinue
+
+if (Test-Path $UpdateZip) { Remove-Item $UpdateZip -Force }
+[System.IO.Compression.ZipFile]::CreateFromDirectory($UpdateStage, $UpdateZip, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+$upHash = (Get-FileHash $UpdateZip -Algorithm SHA256).Hash.ToLower()
+$upSize = (Get-Item $UpdateZip).Length
+$manifestData = [ordered]@{
+    version  = $Version
+    file     = (Split-Path $UpdateZip -Leaf)
+    sha256   = $upHash
+    size     = $upSize
+    released = (Get-Date).ToString('yyyy-MM-dd')
+}
+[System.IO.File]::WriteAllText($ManifestPath, ($manifestData | ConvertTo-Json), (New-Object System.Text.UTF8Encoding($false)))
+Step ("update.zip = {0:N0} bytes  sha256 {1}" -f $upSize, $upHash)
+Step ("update.json = {0}" -f $ManifestPath)
 
 # ---- 2b. icon for the installer window --------------------------------
 $icoSrc = Join-Path $Src 'assets\bab.ico'

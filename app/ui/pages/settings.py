@@ -21,6 +21,7 @@ from ...services import asr, sense, update
 from ..widgets.see_through import see_through, see_through_widget
 from .settings_archive import ArchiveActionsMixin
 from .settings_bridge import BridgeActionsMixin
+from .settings_update import UpdateActionsMixin
 from .settings_voice import VoiceActionsMixin
 
 log = logging.getLogger(__name__)
@@ -46,7 +47,7 @@ def preview_done_text(size_bytes: int, playing: bool) -> str:
     return f"{head}，正在播放" if playing else f"{head}，但没出声（设备或音量？）"
 
 
-class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, QWidget):
+class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, UpdateActionsMixin, QWidget):
     open_details = Signal()
     ports_ready = Signal(object)
     task_done = Signal(object)
@@ -75,9 +76,9 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, Q
         head.addWidget(self.btn_details)
         self.btn_update = QPushButton("检查更新", objectName="Ghost")
         self.btn_update.setToolTip(
-            f"当前版本 {update.version() or '未知'}；打开下载页看看有没有新版本"
+            f"当前版本 {update.version() or '未知'}；检查 GitHub 上有没有新版本"
         )
-        self.btn_update.clicked.connect(lambda: update.open_download(self))
+        self.btn_update.clicked.connect(self.check_update)
         head.addWidget(self.btn_update)
         outer.addLayout(head)
 

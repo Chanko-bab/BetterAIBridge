@@ -792,7 +792,7 @@ def main() -> int:
         check(calls == ["disable", "enable"], f"重启应是「先停后启」（实际 {calls}）")
         card.deleteLater()
 
-    # --- 18. 模组页的「模组市场」：现在只是打开一个占位链接
+    # --- 18. 模组页的「模组市场」：打开 GitHub Pages 模组页
     market_btn = None
     for b in mods_page.findChildren(pages_pkg.mods.QPushButton):
         if b.text() == "模组市场":
@@ -816,8 +816,9 @@ def main() -> int:
         mods_mod.QDesktopServices.openUrl = keep_open
 
     check(opened and opened[0] == mods_mod.MARKET_URL,
-          f"点「模组市场」应打开占位链接（实际 {opened}）")
-    check(str(mods_mod.MARKET_URL).startswith("http"), "市场链接应是 http(s) 占位串")
+          f"点「模组市场」应打开 Pages 模组页（实际 {opened}）")
+    check(mods_mod.MARKET_URL == "https://chanko-bab.github.io/BetterAIBridge/modules.html",
+          "市场链接应是 Pages 模组页")
 
     # --- 19. 设置页：存档 / 卸载程序
     sett = win.pages["settings"]
@@ -1032,8 +1033,8 @@ def main() -> int:
               "主动程度应是 0-3 四档")
         check(sp2.btn_say_now.text() == "让智能体现在说一句", "应有「让智能体现在说一句」按钮")
         check(hasattr(sp2, "btn_update") and sp2.btn_update.text() == "检查更新"
-              and "下载页" in sp2.btn_update.toolTip(),
-              "设置页应有「检查更新」按钮（点了打开下载页）")
+              and "GitHub" in sp2.btn_update.toolTip(),
+              "设置页应有「检查更新」按钮（检查 GitHub 新版本）")
         ap = win.pages.get("appearance")
         check(ap is not None and hasattr(ap, "cb_font_family")
               and hasattr(ap, "cb_font_size") and hasattr(ap, "lbl_font_preview"),

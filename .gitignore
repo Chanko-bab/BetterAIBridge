@@ -19,6 +19,7 @@ payload/
 packaging/version.txt
 program_cache/
 program_bundle/downloads/
+packaging/update-stage/
 
 # ---- 本机配置与个人数据 ----
 config/app.yaml
