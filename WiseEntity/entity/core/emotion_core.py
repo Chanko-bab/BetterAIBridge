@@ -77,28 +77,33 @@ BASIC = ["joy", "sadness", "anger", "fear", "disgust", "surprise"]
 COMPOUND = ["love", "pride", "anxiety", "shame", "envy", "confusion"]
 BASELINE = ["calm"]
 SAN_MIN, SAN_MAX = -100.0, 100.0
+# 理智不是“越高越好”：-100 是完全崩溃，+100 是抽离/无情。
+# 两端都只能渐近；-70 以下、+70 以上都不是日常状态。
+CALM_MODEL = "calm-v2"
+CALM_BANDS = [-70.0, -30.0, 0.0, 30.0, 70.0]
+CALM_BAND_NAMES = ["完全崩溃", "崩溃边缘", "明显失衡", "还稳", "冷静", "抽离/无情"]
 SAN_TEXT = [
     (-1e9, "几乎没了理智：想什么说什么，拦不住，也不管后果。"),
     (-70.0, "压不太住：容易上头，说话冲，事后也不一定后悔。"),
     (-30.0, "有点浮：嘴上比脑子快半拍。"),
-    (30.0, "还稳：知道自己在说什么。"),
-    (70.0, "很冷静：能按住脾气，也能把话说圆。"),
-    (1e9, "冷得过头：几乎不起波澜，听起来像在讲别人的事。"),
+    (0.0, "还稳：知道自己在说什么。"),
+    (30.0, "很冷静：能按住脾气，也能把话说圆。"),
+    (70.0, "冷得过头：几乎不起波澜，听起来像在讲别人的事。"),
 ]
 
 
+def calm_level(p: float) -> int:
+    """展示刻度（-100~100）→ 0..5 档；-70/+70 之外都不是好状态。"""
+    p = float(p)
+    n = 0
+    for th in CALM_BANDS:
+        if p >= th:
+            n += 1
+    return n
+
+
 def san_sentence(v: float) -> str:
-    if v < -70:
-        return SAN_TEXT[0][1]
-    if v < -30:
-        return SAN_TEXT[1][1]
-    if v < 0:
-        return SAN_TEXT[2][1]
-    if v < 70:
-        return SAN_TEXT[3][1]
-    if v < 100:
-        return SAN_TEXT[4][1]
-    return SAN_TEXT[5][1]
+    return SAN_TEXT[calm_level(v)][1]
 
 TYPE: Dict[str, str] = {**{k: "basic" for k in BASIC},
                         **{k: "compound" for k in COMPOUND},
@@ -165,24 +170,32 @@ RULES: List[tuple[str, str, float, str]] = [
     (r"你(自己)?(说|觉得)呢|你猜|不知道", "confusion", 0.10, "被反问"),
     (r"有(血|刀|枪)|流(血|好多血)|死人|尸体|杀人|恐怖|吓死|吓人|太可怕|好可怕", "fear", 0.40, "被吓到"),
     (r"你敢|弄死你|打死你|揍你|报警抓你|删了你|封了你|别让我看见你", "fear", 0.34, "被威胁"),
+    # 理智的负向：辱骂、威胁、冷落、抛弃会把 calm 往下拽
+    (r"你.{0,6}(笨|蠢|傻|废物|垃圾|没用)|脑子(坏|有病)|闭嘴|滚(开|蛋)?|别烦我|烦死", "calm", -0.06, "被骂"),
+    (r"你敢|弄死你|打死你|揍你|报警抓你|删了你|封了你|别让我看见你", "calm", -0.07, "被威胁"),
+    (r"不理你|不想说|随便你|算了|无所谓|闭嘴吧", "calm", -0.03, "被晾"),
+    (r"分手|离开你|不要你|再也不想见|滚出去|永远别回来", "calm", -0.08, "被抛弃"),
 ]
 
 # 事件 → 情绪（世界给她的刺激）
 STIMULI = {
-    "owner_msg": [("love", 0.03), ("calm", 0.02)],
-    "other_msg": [("calm", 0.01)],
-    "group_msg": [("calm", 0.01)],
+    "owner_msg": [("love", 0.03), ("calm", 0.01)],
+    "other_msg": [("calm", 0.005)],
+    "group_msg": [("calm", 0.005)],
     "qzone_like": [("pride", 0.10), ("joy", 0.08)],
     "qzone_reply": [("joy", 0.10), ("surprise", 0.04)],
-    "video": [("calm", 0.05)],
+    "video": [("calm", 0.02)],
     "sticker": [("joy", 0.03)],
-    "idle": [("calm", 0.02)],
+    "idle": [("calm", 0.01)],
     "error": [("anxiety", 0.14), ("confusion", 0.08)],
     "success": [("pride", 0.14), ("joy", 0.10)],
-    "neglect": [("sadness", 0.06)],
-    # 话说了一半被打断：剩下几句咽回去。只登记一次，不按句数叠（叠多了像惩罚）
-    "cut_off": [("surprise", 0.05), ("shame", 0.04), ("sadness", 0.03), ("love", 0.02)],
-    "threat": [("fear", 0.40), ("anxiety", 0.15)],
+    "neglect": [("sadness", 0.06), ("calm", -0.02)],
+    # 话说了一半被打断：剩下几句咽回去。只登记一次，不按句数叠。
+    "cut_off": [("surprise", 0.05), ("shame", 0.04), ("sadness", 0.03),
+                ("love", 0.02), ("calm", -0.01)],
+    "threat": [("fear", 0.40), ("anxiety", 0.15), ("calm", -0.05)],
+    "humiliation": [("shame", 0.30), ("anger", 0.20), ("calm", -0.06)],
+    "betrayal": [("sadness", 0.35), ("anger", 0.25), ("calm", -0.08)],
     "horror": [("fear", 0.30)],
 }
 
@@ -288,6 +301,27 @@ def _clamp_display(key: str, p: float) -> float:
     return max(lo, min(hi, p))
 
 
+def _sanitize_calm_seed(p: float) -> float:
+    """人格种子只负责“起点”：不允许一开局就站到 +70 的无情区。"""
+    return max(-45.0, min(55.0, float(p)))
+
+
+def calm_home_point(style: Optional[str] = None) -> float:
+    """这套人格的理智基线（展示点）：decay 回这里，不是回 0。"""
+    try:
+        st = profile()["seeds"].get(style or _style()) or _SEEDS["温柔"]
+        return _sanitize_calm_seed(float(st.get("calm", 0.0)))
+    except Exception:
+        return 0.0
+
+
+def _calm_gain(p: float, eff: float) -> float:
+    """软饱和：离 0 越远，同向事件越推不动；±70 外只能慢慢蹭过去。"""
+    p = float(p)
+    dist = max(0.0, p - 40.0) if eff > 0 else max(0.0, -p - 40.0)
+    return max(0.0, 1.0 - dist / 60.0)
+
+
 def seeds(style: Optional[str] = None) -> Dict[str, float]:
     st = profile()["seeds"].get(style or _style()) or _SEEDS["温柔"]
     pts = {k: float(st.get(k, 0.0)) for k in KEYS}
@@ -296,6 +330,8 @@ def seeds(style: Optional[str] = None) -> Dict[str, float]:
             pts[k] = pts.get(k, 0.0) + v
     except Exception:
         pass
+    if "calm" in pts:
+        pts["calm"] = _sanitize_calm_seed(pts["calm"])
     return {k: to_unit(k, _clamp_display(k, pts.get(k, 0.0))) for k in KEYS}
 
 
@@ -348,6 +384,7 @@ def _blank() -> dict:
             "habit": {}, "pending": [], "last_event": "", "events_today": 0,
             "day": datetime.now().strftime("%Y-%m-%d"),
             "started": False, "started_at": "", "seed_style": "",
+            "calm_model": CALM_MODEL, "calm_home": calm_home_point(),
             "unit": "act1000"}
 
 
@@ -365,6 +402,15 @@ def load() -> dict:
     else:
         vals = {k: _clamp(float(vals.get(k, NEUTRAL))) for k in KEYS}
     st["values"] = vals
+    if st.get("calm_model") != CALM_MODEL:
+        p = from_unit("calm", vals["calm"])
+        if p > 70.0:
+            p = 55.0
+        elif p < -70.0:
+            p = -55.0
+        vals["calm"] = to_unit("calm", p)
+        st["calm_model"] = CALM_MODEL
+    st.setdefault("calm_home", calm_home_point())
     st.setdefault("updated_at", time.time())
     st.setdefault("habit", {})
     st.setdefault("pending", [])
@@ -391,6 +437,8 @@ def start(st: Optional[dict] = None) -> dict:
     st["started"] = True
     st["started_at"] = _now()
     st["seed_style"] = style
+    st["calm_home"] = calm_home_point(style)
+    st["calm_model"] = CALM_MODEL
     save(st)
     S.log(f"[emotion] 开局（{style}）：" + " ".join(f"{k}={st['values'][k]:.0f}" for k in KEYS))
     return st
@@ -406,7 +454,8 @@ def level(v: float) -> int:
 
 def bands(st: Optional[dict] = None) -> Dict[str, int]:
     st = st or load()
-    return {k: level(st["values"][k]) for k in KEYS}
+    return {k: (calm_level(display_value(k, st["values"][k])) if k == "calm"
+                else level(st["values"][k])) for k in KEYS}
 
 
 # --------------------------------------------------------------------- 衰减 / 抑制
@@ -415,9 +464,11 @@ def decay(st: dict, now: Optional[float] = None) -> dict:
     dt_min = max(0.0, (now - float(st.get("updated_at") or now)) / 60.0)
     if dt_min < 0.05:
         return st
+    calm_home = to_unit("calm", _sanitize_calm_seed(st.get("calm_home") or calm_home_point()))
     for k in KEYS:
         f = 0.5 ** (dt_min / _hl(k))
-        st["values"][k] = _clamp(NEUTRAL + (st["values"][k] - NEUTRAL) * f)
+        target = calm_home if k == "calm" else NEUTRAL
+        st["values"][k] = _clamp(target + (st["values"][k] - target) * f)
     st["updated_at"] = now
     return st
 
@@ -456,6 +507,8 @@ def apply_event(st: dict, emo: str, delta: float, why: str = "",
     key = _habit_key(emo, why)
     factor = _habit_factor(st, key)
     eff = float(delta) * UNIT * float(scale) * factor * _sens(emo)
+    if emo == "calm":
+        eff *= _calm_gain(from_unit("calm", st["values"][emo]), eff)
     dp = _clamp_display(emo, from_unit(emo, st["values"][emo]) + eff)
     st["values"][emo] = to_unit(emo, dp)
     hb = st.setdefault("habit", {}).setdefault(key, {"n": 0, "last": 0})
@@ -490,7 +543,7 @@ def appraise(text: str, is_owner: bool = True, sender_name: str = "") -> List[di
     hits: Dict[str, tuple] = {}
     for pat, emo, delta, why in RULES:
         if re.search(pat, text or ""):
-            if emo not in hits or delta > hits[emo][0]:
+            if emo not in hits or abs(delta) > abs(hits[emo][0]):
                 hits[emo] = (delta, why)
     out = []
     for emo, (delta, why) in hits.items():
@@ -714,7 +767,11 @@ def state(include_recent: int = 5) -> dict:
         "display": display_values(st),
         "nt": bridge.levels() or {},
         "levels": bands(st),
-        "band_names": {k: BAND_NAMES[level(st["values"][k])] for k in KEYS},
+        "band_names": {k: (CALM_BAND_NAMES[calm_level(display_value(k, st["values"][k]))]
+                            if k == "calm" else BAND_NAMES[level(st["values"][k])])
+                       for k in KEYS},
+        "calm_home": round(calm_home_point(), 1),
+        "calm_model": st.get("calm_model") or CALM_MODEL,
         "labels": {k: NAME[k] for k in KEYS},
         "types": TYPE,
         "order": {"basic": BASIC, "compound": COMPOUND, "baseline": BASELINE},
@@ -738,9 +795,15 @@ def tick() -> dict:
         lv = bridge.levels()
         if lv:
             for k, add in bridge.push(lv).items():
-                if add:
-                    dp = _clamp_display(k, from_unit(k, st["values"][k]) + add)
-                    st["values"][k] = to_unit(k, dp)
+                if not add:
+                    continue
+                if k == "calm":
+                    p = from_unit("calm", st["values"][k])
+                    if abs(p) >= 60.0:
+                        continue
+                    add = max(-2.0, min(2.0, float(add)))
+                dp = _clamp_display(k, from_unit(k, st["values"][k]) + add)
+                st["values"][k] = to_unit(k, dp)
     except Exception as e:
         S.log(f"[emotion] 调质推力失败：{e!r}")
     save(st)

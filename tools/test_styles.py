@@ -66,7 +66,7 @@ for old, new in E._ALIASES.items():
     check(E._PROFILE.get(old) == E._PROFILE.get(new), f"{old} 应指向 {new} 的同一份敏感度")
 
 check(P.seeds("病娇")["love"] == 35, "病娇的爱意初始值应是 35")
-check(P.seeds("傲娇")["calm"] == 31, "傲娇的理智初始值应是 31")
+check(P.seeds("傲娇")["calm"] == 18, "傲娇的理智初始值应是 18")
 check(P.delta("雌小鬼")["envy"] == 1.0, "雌小鬼的嫉妒应是强 1.0")
 check(P.delta("病娇")["envy"] == 1.4, "病娇的嫉妒应是极强 1.4")
 check(P.half_life("病娇")["envy"] == 0.7, "极强情绪的回落应更快（0.7）")

@@ -88,6 +88,7 @@ SUITES = [
      "记忆 A（owner 归一）+ 三个能力（voice.tts / voice.asr / vision.describe）+ 语音服务骨架"),
     ("styles", "tools/test_styles.py", "kernel", "人设：16 套底表与开局取值"),
     ("emotion_bridge", "tools/test_emotion_bridge.py", "kernel", "情绪接线：6 调质 → 13 维、量程、推力上限"),
+    ("calm_model", "tools/test_calm_model.py", "kernel", "理智：分档、人格基线、软饱和、存档迁移、调质上限"),
     ("local_tts", "tools/test_local_tts.py", "any",
      "本地语音包：端口/清单/假 sidecar 合成 WAV/缓存/格式识别"),
     ("refs", "tools/lint_refs.py", "any", "死链：代码里写死的路径还存不存在"),
