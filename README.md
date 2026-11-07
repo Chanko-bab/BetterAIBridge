@@ -3,15 +3,22 @@
 本地优先的桌面 AI 陪伴运行时：壳（PySide6）+ 内核（FastAPI）两个进程。
 人格、记忆、13 维情绪、自我叙事、耳目、模组都在本机；聊天内容只发给用户选择的模型服务商。
 
-**当前版本：0.6.1（2026-11-07）**
+**当前版本：0.6.4（2026-11-08）**
 
 ## 现在是什么状态
 
-- 有安装包：`BetterAIBridge-Setup-0.6.1.exe`（IExpress 自解压，安装目录默认在 `%LOCALAPPDATA%`）。
+- 有安装包：`BetterAIBridge-Setup-0.6.4.exe`（IExpress 自解压，安装目录默认在 `%LOCALAPPDATA%`）。
 - 有源码运行：`setup.cmd` 建壳/内核/语音三个 venv，`start.cmd` 启动。
-- 自检 **71 套**，全量约 130 秒；`build.ps1` 出包前会先跑一遍。
+- 自检 **74 套**，全量约 156 秒；`build.ps1` 出包前会先跑一遍。
 - 安装目录内的 `WiseEntity/entity/` 是她的数据：人格、记忆、情绪、自我、状态；卸载时默认保留。
 - 不是“另一个聊天壳”：壳只负责窗口和桥，内核负责她是谁、记得什么、现在什么情绪。
+
+## 0.6.2–0.6.4 这一版
+
+- 0.6.2：自动更新改成独立助手——启动器退出后由 `pythonw.exe -I` 起 helper，先停进程、备份、安全解压，再用 `wscript.exe` 拉起来，失败回滚；更新对话框等到 helper 就绪才退出。安装器默认目录带版本名，快捷方式统一叫 `BetterAIBridge.lnk`。0.6.0/0.6.1 的旧更新脚本可能没执行过，这两版请手动装 0.6.2 或更新。
+- 0.6.3：安装器迁移旧快捷方式——旧入口指向的版本还在，就保留成带版本号的 `BetterAIBridge <版本>.lnk`；同一目录覆盖安装不重复迁移；安装器校验改用 SHA-256，不再依赖取不到路径的 Authenticode。
+- 0.6.4：当前版入口固定叫 `BetterAIBridgeLauncher.lnk`，旧版本入口叫 `BetterAIBridgeLauncher <版本>.lnk`；自动更新只换代码不动快捷方式，启动器首次启动会一次性把旧的 `BetterAIBridge.lnk` 迁成新名字。
+- 0.6.3→0.6.4 的自动更新在本机实测通过：启动器退出、备份、覆盖、自动重开；`logs/update.log` 记 `update ok`。
 
 ## 0.6.1 这一版
 
@@ -49,7 +56,7 @@
 
 ### 用安装包
 
-1. 双击 `BetterAIBridge-Setup-0.6.1.exe`，选安装位置。
+1. 双击 `BetterAIBridge-Setup-0.6.4.exe`，选安装位置。
 2. 首次启动跟着向导填名字和 API Key；没有 Key 时向导不会跳过，因为没 Key 的智能体不能用。
 3. 内核端口由安装器从 `40720` 起找空闲，语音从 `40715` 起找；实际值看安装目录的 `config/app.yaml`。
 4. 数据、日志都在安装目录内；卸载时可选择是否保留 `WiseEntity/entity/`。
@@ -134,7 +141,7 @@ BetterAIBridge/
 出包（需要 Windows 的 IExpress）：
 
 ```powershell
-powershell -NoProfile -File packaging\build.ps1 -Version 0.6.1
+powershell -NoProfile -File packaging\build.ps1 -Version 0.6.4
 ```
 
 默认从仓库根读 `VERSION.txt`，产物写到仓库旁的 `dist/`；急着手动出包可加 `-SkipCheck`，
