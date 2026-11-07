@@ -44,6 +44,7 @@ class UpdateDialog(QDialog):
         self.info = info
         self._worker: _Download | None = None
         self._closed = False
+        self._wait_tries = 0
         self.setWindowTitle("更新 BetterAIBridge")
         self.setModal(True)
         self.setMinimumWidth(460)
@@ -89,18 +90,33 @@ class UpdateDialog(QDialog):
             Path(zip_path).unlink(missing_ok=True)
             return
         try:
-            helper = Path(tempfile.gettempdir()) / f"bab-update-{self.info.version}.ps1"
-            update.write_helper_script(
-                helper, Path(config.APP_DIR), Path(zip_path), self.info.version, os.getpid()
-            )
-            update.spawn_helper(helper)
+            update.spawn_helper(Path(config.APP_DIR), Path(zip_path), self.info.version, os.getpid())
         except (OSError, ValueError, RuntimeError) as e:
             self._failed(f"启动更新程序失败：{e}")
             return
-        self.status.setText("更新程序已启动，启动器即将退出…")
+        self.status.setText("正在确认更新程序已经接手…")
+        self.btn.setText("正在启动…")
         self.btn.setEnabled(False)
-        self.accept()
-        QTimer.singleShot(400, QApplication.quit)
+        self._wait_tries = 0
+        QTimer.singleShot(100, self._check_helper)
+
+    def _check_helper(self) -> None:
+        if self._closed:
+            return
+        state = update.helper_state()
+        if state in ("ready", "done"):
+            self.status.setText("更新程序已接手，启动器即将退出…")
+            self.accept()
+            QTimer.singleShot(400, QApplication.quit)
+            return
+        if state == "failed":
+            self._failed("更新程序启动失败，已保留当前版本；请手动下载安装包。")
+            return
+        self._wait_tries += 1
+        if self._wait_tries >= 300:
+            self._failed("更新程序没有响应，已保留当前版本；请手动下载安装包。")
+            return
+        QTimer.singleShot(100, self._check_helper)
 
     def _failed(self, text: str) -> None:
         if self._closed:

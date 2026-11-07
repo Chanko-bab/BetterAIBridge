@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>文档 —— BetterAIBridge</title>
-  <meta name="description" content="BetterAIBridge 0.6.1 文档：安装、第一次打开、数据与存档、模组、耳目、语音、常见问题、卸载与已知限制。">
+  <meta name="description" content="BetterAIBridge 0.6.2 文档：安装、第一次打开、数据与存档、模组、耳目、语音、常见问题、卸载与已知限制。">
   <link rel="icon" href="assets/bab-64.png">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -21,14 +21,14 @@
       <a href="modules.html">模组</a>
       <a href="developers.html">参与</a>
       <a href="docs.html" aria-current="page">文档</a>
-      <a class="nav-cta" href="https://github.com/Chanko-bab/BetterAIBridge/releases/latest">下载 0.6.1</a>
+      <a class="nav-cta" href="https://github.com/Chanko-bab/BetterAIBridge/releases/latest">下载 0.6.2</a>
     </div>
   </div>
 </nav>
 
 <header class="page-hero">
   <div class="wrap">
-    <span class="eyebrow"><span class="dot"></span> 0.6.1 · 公开测试版文档</span>
+    <span class="eyebrow"><span class="dot"></span> 0.6.2 · 公开测试版文档</span>
     <h1>先装好，<br>再用起来。</h1>
     <p>这一页只讲你“怎么用、怎么报错、怎么不丢东西”。想改代码或写模组，请去仓库看 README 和模组契约。</p>
   </div>
@@ -52,15 +52,18 @@
   <main class="doc-body">
     <section class="doc-section" id="install">
       <h2>安装</h2>
-      <p>0.6.1 是 Windows 10/11 64 位的公开测试包，未签名。</p>
+      <p>0.6.2 是 Windows 10/11 64 位的公开测试包，未签名。</p>
       <ol>
-        <li>请你从 <a href="https://github.com/Chanko-bab/BetterAIBridge/releases/latest">GitHub Release</a> 下载 <code>BetterAIBridge-Setup-0.6.1.exe</code>。</li>
+        <li>请你从 <a href="https://github.com/Chanko-bab/BetterAIBridge/releases/latest">GitHub Release</a> 下载 <code>BetterAIBridge-Setup-0.6.2.exe</code>。</li>
         <li>如果 SmartScreen 拦截，请点“更多信息 → 仍要运行”。安装包未签名，这是预期行为。</li>
-        <li>请你选安装目录。默认是 <code>%LOCALAPPDATA%\BetterAIBridge 0.6.1</code>，可以改。</li>
+        <li>请你选安装目录。默认是 <code>%LOCALAPPDATA%\BetterAIBridge 0.6.2</code>，可以改。</li>
         <li>请等依赖下载完，通常 5–15 分钟。请不要中途关窗口。</li>
       </ol>
       <div class="callout">
-        <strong>从 0.4.x 升级：</strong>请先导出存档，再装 0.6.1。请不要直接覆盖你正在用的旧目录。
+        <strong>从 0.4.x 升级：</strong>请先导出存档，再装 0.6.2。请不要直接覆盖你正在用的旧目录。
+      </div>
+      <div class="callout">
+        <strong>从 0.6.0 / 0.6.1 升级：</strong>请手动装 0.6.2。旧版内置的更新助手不可靠，这次不能靠它完成升级；装好 0.6.2 后，再往后才能用新的自动更新。
       </div>
     </section>
 
@@ -68,7 +71,7 @@
       <h2>第一次打开</h2>
       <p>你会在向导里依次填：称呼、API Key、模型、智能体的名字/性别/自称、性格底子。</p>
       <ul>
-        <li><strong>没有 Key 不能完成创建。</strong>0.6.1 没有“跳过”；没 Key 的智能体不能用。</li>
+        <li><strong>没有 Key 不能完成创建。</strong>0.6.2 没有“跳过”；没 Key 的智能体不能用。</li>
         <li>请用推荐 DeepSeek，<code>https://platform.deepseek.com</code>；充少量金额即可。</li>
         <li>建好后，请把右上角切到 <strong>在线</strong>，在输入框里说第一句话。</li>
         <li>第一次回复可能等 10–30 秒：内核要启动，模型要连接。</li>
@@ -108,7 +111,7 @@
 
     <section class="doc-section" id="modules">
       <h2>模组</h2>
-      <p>0.6.1 安装完<strong>没有任何模组</strong>。这是故意的，不是装坏了。</p>
+      <p>0.6.2 安装完<strong>没有任何模组</strong>。这是故意的，不是装坏了。</p>
       <ol>
         <li>请点左侧「模组」→「外部导入」，选 <code>.pbab</code> 文件。</li>
         <li>装完请点「启用」。M 是框架，pre 是一次性前置，B 站/QQ 是桥。</li>
@@ -173,7 +176,7 @@
     <section class="doc-section" id="limits">
       <h2>已知限制</h2>
       <ul>
-        <li>0.6.1 不捆绑模组；B 站已实测，QQ 已初步实测、长期稳定性观察中；M/pre 只做了契约测试。</li>
+        <li>0.6.2 不捆绑模组；B 站已实测，QQ 已初步实测、长期稳定性观察中；M/pre 只做了契约测试。</li>
         <li>未签名；SmartScreen 会拦。</li>
         <li>自动更新只在你点「检查更新」后发生，不会在后台轮询；更新失败可手动下载 Setup。</li>
         <li>API Key 在本地明文保存；请用单独的、限额的 Key。</li>
@@ -196,7 +199,7 @@
       <a href="modules.html">模组</a> ·
       <a href="developers.html">参与</a>
     </span>
-    <span class="fine">0.6.1 公开测试版 · 下载与 Release 已上线</span>
+    <span class="fine">0.6.2 公开测试版 · 下载与 Release 已上线</span>
   </div>
 </footer>
 

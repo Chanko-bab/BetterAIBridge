@@ -1,7 +1,7 @@
 """检查更新 + 下载/校验/应用更新包。
 
 只信任 GitHub Release 里的 `update.json`：它写明版本、zip 文件名、sha256、大小。
-真正的文件替换交给独立 PowerShell helper，启动器退出后它才动手，避免锁文件。
+真正的文件替换交给独立 Python helper，启动器退出后它才动手，避免锁文件。
 """
 from __future__ import annotations
 
@@ -11,7 +11,9 @@ import os
 import re
 import ssl
 import subprocess
+import sys
 import tempfile
+import time
 import urllib.request
 import zipfile
 from dataclasses import dataclass
@@ -35,6 +37,7 @@ USER_AGENT = "BetterAIBridge-Updater/1"
 ALLOWED = (
     "main.py",
     "launch.vbs",
+    "BetterAIBridge.vbs",
     "start.cmd",
     "VERSION.txt",
     "app/",
@@ -268,7 +271,7 @@ def _safe_name(name: str) -> str:
 
 
 def _allowed(norm: str) -> bool:
-    if norm in ("main.py", "launch.vbs", "start.cmd", "VERSION.txt"):
+    if norm in ("main.py", "launch.vbs", "BetterAIBridge.vbs", "start.cmd", "VERSION.txt"):
         return True
     if any(norm.startswith(p) for p in BLOCKED):
         return False
@@ -308,85 +311,85 @@ def safe_extract(zip_path: Path, dest: Path) -> list[str]:
     return extracted
 
 
-def helper_script(install_dir: Path, zip_path: Path, version: str, parent_pid: int) -> str:
-    """生成独立更新脚本；路径用 PowerShell 单引号转义。"""
-    def q(p) -> str:
-        return "'" + str(p).replace("'", "''") + "'"
-
-    items = (
-        "main.py",
-        "launch.vbs",
-        "start.cmd",
-        "VERSION.txt",
-        "app",
-        "assets",
-        r"WiseEntity\entity\core",
-        r"WiseEntity\entity\brain",
-        r"WiseEntity\source_code\scripts",
-    )
-    item_list = ",".join(q(x) for x in items)
-    return f"""param(
-    [int]$ParentPid = {int(parent_pid)},
-    [string]$Zip = {q(zip_path)},
-    [string]$Dir = {q(install_dir)},
-    [string]$Version = {q(version)}
-)
-$ErrorActionPreference = 'Stop'
-$log = Join-Path $env:LOCALAPPDATA 'BetterAIBridge\\logs\\update.log'
-New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null
-$backup = Join-Path $Dir ('backups\\update-' + $Version + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
-function Write-UpdateLog($s) {{ "$(Get-Date -Format o) $s" | Add-Content -LiteralPath $log -Encoding UTF8 }}
-try {{
-    Write-UpdateLog "waiting for launcher $ParentPid"
-    Wait-Process -Id $ParentPid -Timeout 60 -ErrorAction SilentlyContinue
-    $stop = Join-Path $Dir 'WiseEntity\\source_code\\scripts\\stop-all.ps1'
-    if (Test-Path -LiteralPath $stop) {{
-        & powershell -NoProfile -ExecutionPolicy Bypass -File $stop | Out-Null
-    }}
-    Start-Sleep -Milliseconds 800
-    New-Item -ItemType Directory -Force -Path $backup | Out-Null
-    foreach ($rel in @({item_list})) {{
-        $src = Join-Path $Dir $rel
-        if (Test-Path -LiteralPath $src) {{
-            $dst = Join-Path $backup $rel
-            New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
-            Copy-Item -LiteralPath $src -Destination $dst -Recurse -Force
-        }}
-    }}
-    Write-UpdateLog "extract $Zip -> $Dir"
-    Expand-Archive -LiteralPath $Zip -DestinationPath $Dir -Force
-    if (-not (Test-Path -LiteralPath (Join-Path $Dir 'VERSION.txt'))) {{ throw 'VERSION.txt missing after update' }}
-    Write-UpdateLog "update ok, launching"
-    Start-Process -FilePath (Join-Path $Dir 'launch.vbs') -WorkingDirectory $Dir
-}} catch {{
-    Write-UpdateLog ("FAILED: " + ($_ | Out-String))
-    foreach ($rel in @({item_list})) {{
-        $b = Join-Path $backup $rel
-        if (Test-Path -LiteralPath $b) {{
-            Copy-Item -LiteralPath $b -Destination (Join-Path $Dir $rel) -Recurse -Force -ErrorAction SilentlyContinue
-        }}
-    }}
-    exit 1
-}}
-"""
+def helper_source_path() -> Path:
+    """独立 Python 更新助手在安装目录里的位置。"""
+    return Path(config.APP_DIR).resolve() / "app" / "services" / "update_helper.py"
 
 
-def write_helper_script(path: Path, install_dir: Path, zip_path: Path, version: str, parent_pid: int) -> Path:
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(helper_script(install_dir, zip_path, version, parent_pid), encoding="utf-8-sig")
-    return path
+def _helper_log_path() -> Path:
+    base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+    return Path(base) / "BetterAIBridge" / "logs" / "update.log"
 
 
-def spawn_helper(script_path: Path) -> None:
-    flags = 0
-    if os.name == "nt":
-        flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
-    subprocess.Popen(
-        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", str(script_path)],
-        close_fds=True,
-        creationflags=flags,
-    )
+def helper_state_path() -> Path:
+    return _helper_log_path().with_name("update_state.json")
+
+
+def helper_state() -> str:
+    try:
+        data = json.loads(helper_state_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return ""
+    return str(data.get("state") or "")
+
+
+def _helper_log(message: str) -> None:
+    path = _helper_log_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(f"{message}\n")
+    except OSError:
+        pass
+
+
+def spawn_helper(install_dir: Path, zip_path: Path, version: str, parent_pid: int) -> int:
+    """启动独立 Python 助手；返回 helper pid。
+
+    Python 助手不经过 PowerShell 执行策略，也不依赖 .vbs 文件关联。
+    """
+    helper = helper_source_path()
+    if not helper.exists():
+        raise UpdateError("更新助手缺失：app/services/update_helper.py")
+
+    python = Path(sys.executable)
+    if python.name.lower() == "python.exe":
+        pythonw = python.with_name("pythonw.exe")
+        if pythonw.exists():
+            python = pythonw
+    try:
+        helper_state_path().unlink(missing_ok=True)
+    except OSError:
+        pass
+    _helper_log(f"spawn helper version={version} parent={parent_pid}")
+    cmd = [
+        str(python), "-I", str(helper),
+        "--parent-pid", str(int(parent_pid)),
+        "--zip", str(zip_path),
+        "--dir", str(install_dir),
+        "--version", str(version),
+    ]
+    flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+    proc = None
+    try:
+        proc = subprocess.Popen(cmd, close_fds=True, creationflags=flags | 0x01000000)
+    except OSError:
+        proc = subprocess.Popen(cmd, close_fds=True, creationflags=flags)
+    _helper_log(f"spawn helper pid={proc.pid}")
+    return int(proc.pid)
+
+
+def wait_helper_ready(timeout: float = 6.0) -> bool:
+    """等 helper 写 ready；失败或超时返回 False。供单测/无 QTimer 调用。"""
+    deadline = time.monotonic() + max(0.0, timeout)
+    while time.monotonic() < deadline:
+        state = helper_state()
+        if state in ("ready", "done"):
+            return True
+        if state == "failed":
+            return False
+        time.sleep(0.1)
+    return False
 
 
 def installed() -> bool:

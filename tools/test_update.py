@@ -158,10 +158,12 @@ def test_extract() -> None:
 
 
 def test_helper() -> None:
-    text = U.helper_script(Path(r"D:\BAB"), Path(r"C:\u.zip"), "0.6.0", 1234)
-    for needle in ("Wait-Process", "stop-all.ps1", "Expand-Archive", "launch.vbs", "0.6.0", "1234"):
+    helper = ROOT / "app" / "services" / "update_helper.py"
+    check(helper.exists(), "更新助手存在")
+    text = helper.read_text(encoding="utf-8")
+    for needle in ("WaitForSingleObject", "stop-all.ps1", "VERSION.txt", "wscript.exe", "backups"):
         check(needle in text, f"helper 含 {needle}")
-    check("entity\\memory" not in text and "entity/memory" not in text, "helper 不备份个人数据")
+    check("entity/memory" not in text and "entity\\memory" not in text, "helper 不备份个人数据")
 
 
 def test_market() -> None:
