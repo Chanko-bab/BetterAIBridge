@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import time
 from datetime import datetime
+from pathlib import Path
 
 import os
 
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt, QTimer, Signal, QVariantAnimation
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QButtonGroup, QCheckBox, QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel,
     QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget,
@@ -15,11 +16,12 @@ from PySide6.QtWidgets import (
 
 from ...core import config, framework_setup, logger
 from ...services import worker as worker_mod
-from ...services import audio, speech_time
+from ...services import audio, recorder as recorder_mod, speech_time, voice_store
 from ...services.core_client import CoreClient
 from ...services.worker import run_async
 from .. import action_text, fonts
 from ..widgets.nanny_panel import NannyPanel
+from ..widgets.voice_bubble import VoiceBubble
 from .chat_nanny import ChatNannyMixin
 
 
@@ -102,6 +104,14 @@ class ChatPage(ChatNannyMixin, QWidget):
         self._poll_busy = False
         self._last_me = ""
         self._pending = False
+        self._voice_busy = False
+        self._rec = recorder_mod.Recorder()
+        self._rec_ready = False
+        self._rec_clip = None
+        self._rec_cancelled = False
+        self._rec_timer = QTimer(self)
+        self._rec_timer.setInterval(100)
+        self._rec_timer.timeout.connect(self._voice_tick)
 
         # 左边是聊天，右边是保姆程序的流水（只记提醒，不参与聊天）
         self.cols = QHBoxLayout(self)
@@ -181,7 +191,40 @@ class ChatPage(ChatNannyMixin, QWidget):
         # ---- 输入 ----
         self.typing = QLabel("", objectName="Muted")
         outer.addWidget(self.typing)
+
+        # 录音时出现的条：计时 + 保留开关 + 发送/取消
+        self.rec_bar = QFrame(objectName="RecBar")
+        rb = QHBoxLayout(self.rec_bar)
+        rb.setContentsMargins(10, 5, 8, 5)
+        rb.setSpacing(8)
+        self.rec_dot = QLabel("●", objectName="RecDot")
+        rb.addWidget(self.rec_dot)
+        self.rec_time = QLabel("0.0 秒", objectName="RecTime")
+        rb.addWidget(self.rec_time)
+        self.rec_hint = QLabel("点「发送」结束 · Esc 取消", objectName="RecHint")
+        rb.addWidget(self.rec_hint, 1)
+        self.rec_keep = QCheckBox("保留本次录音")
+        self.rec_keep.setChecked(bool(config.get("voice.keep_default", True)))
+        self.rec_keep.setToolTip("开：存进语音库，30 天后自动清理；关：只在本次运行可听")
+        rb.addWidget(self.rec_keep)
+        self.rec_send = QPushButton("发送", objectName="RecSend")
+        self.rec_send.setEnabled(False)
+        self.rec_send.setToolTip("至少 5 秒后可发送")
+        self.rec_send.clicked.connect(self._voice_send)
+        rb.addWidget(self.rec_send)
+        self.rec_cancel = QPushButton("取消", objectName="Ghost")
+        self.rec_cancel.clicked.connect(self._voice_cancel)
+        rb.addWidget(self.rec_cancel)
+        self.rec_bar.hide()
+        outer.addWidget(self.rec_bar)
+
         row = QHBoxLayout()
+        self.btn_mic = QPushButton("🎤", objectName="MicButton")
+        self.btn_mic.setFixedSize(fonts.ui_px(40), fonts.ui_px(40))
+        self.btn_mic.setCursor(Qt.PointingHandCursor)
+        self.btn_mic.setToolTip("点一下开始录音（5–90 秒），再点「发送」结束")
+        self.btn_mic.setAccessibleName("开始录音")
+        self.btn_mic.clicked.connect(self._voice_start)
         self.input = ChatInput(objectName="ChatInput")
         self.apply_pronoun()
         self.input.submitted.connect(self.send)
@@ -190,9 +233,14 @@ class ChatPage(ChatNannyMixin, QWidget):
         self.btn_send.setAccessibleName("发送消息")
         self.btn_send.setToolTip("发送（Enter）")
         self.btn_send.clicked.connect(self.send)
+        row.addWidget(self.btn_mic)
         row.addWidget(self.input, 1)
         row.addWidget(self.btn_send)
         outer.addLayout(row)
+
+        self._esc = QShortcut(QKeySequence("Escape"), self)
+        self._esc.setContext(Qt.WidgetWithChildrenShortcut)
+        self._esc.activated.connect(self._voice_cancel)
 
         # AI 生成标识：常驻在输入框下方，不参与滚动，也不挡对话
         self.ai_label = QLabel(self._ai_label_text(), objectName="AILabel")
@@ -389,6 +437,187 @@ class ChatPage(ChatNannyMixin, QWidget):
 
         run_async(lambda: CoreClient().chat(text, session=self.session), on_ok=self._on_ok,
                   on_err=self._on_err)
+
+    # ---------- 语音消息 ----------
+    def voice_bubble(self, who: str, voice: dict, text: str = "") -> None:
+        """画一条音频气泡；转写默认收起。"""
+        w = VoiceBubble(voice, text, who)
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        if who == "me":
+            row.addStretch(1)
+            row.addWidget(w)
+        else:
+            row.addWidget(w)
+            row.addStretch(1)
+        self._add_row(row)
+        self._request_scroll()
+
+    def _voice_start(self) -> None:
+        if self._rec_ready:
+            self.rec_hint.setText("先点「发送」或「取消」")
+            return
+        if self._pending or self._voice_busy or self._rec.active:
+            return
+        try:
+            mic = str(config.get("voice.mic", "") or "")
+            self._rec.start(recorder_mod.senses.pick_mic(mic))
+        except Exception as e:  # noqa: BLE001
+            self.typing.setText(f"录不了音：{e}")
+            QTimer.singleShot(4000, lambda: self.typing.setText("") if not self._pending else None)
+            return
+        self._rec_cancelled = False
+        self._rec_clip = None
+        self.typing.setText("")
+        self.rec_time.setText("0.0 秒")
+        self.rec_hint.setText("点「发送」结束 · 至少 5 秒 · Esc 取消")
+        self.rec_send.setEnabled(False)
+        self.rec_send.setToolTip("至少 5 秒后可发送")
+        self.rec_bar.show()
+        self._set_recording_style(True)
+        self._rec_timer.start(100)
+
+    def _voice_tick(self) -> None:
+        if self._rec_ready or not self._rec.active:
+            return
+        ms = self._rec.elapsed_ms()
+        self.rec_time.setText(f"{min(ms, recorder_mod.MAX_MS) / 1000.0:.1f} 秒")
+        if ms >= recorder_mod.MAX_MS:
+            # 到 90 秒只停录，不自动发；等用户点「发送」或「取消」
+            try:
+                self._rec_clip = self._rec.stop()
+            except (recorder_mod.RecorderError, OSError) as e:
+                self._voice_reset()
+                self.typing.setText(f"这段没录上：{e}")
+                QTimer.singleShot(4000, lambda: self.typing.setText("") if not self._pending else None)
+                return
+            self._rec_ready = True
+            self._rec_timer.stop()
+            self.rec_time.setText(f"{recorder_mod.MAX_MS / 1000.0:.1f} 秒")
+            self.rec_hint.setText("到 90 秒了，点「发送」或「取消」")
+            self.rec_send.setEnabled(True)
+            self.rec_send.setToolTip("发送这段录音")
+            self._set_recording_style(False)
+            return
+        if ms < recorder_mod.MIN_MS:
+            self.rec_send.setEnabled(False)
+            left = (recorder_mod.MIN_MS - ms) / 1000.0
+            self.rec_hint.setText(f"至少 5 秒（还差 {left:.1f} 秒）")
+        else:
+            self.rec_send.setEnabled(True)
+            self.rec_send.setToolTip("发送这段录音")
+            self.rec_hint.setText("点「发送」结束 · Esc 取消")
+
+    def _voice_send(self) -> None:
+        if self._voice_busy or self._pending:
+            return
+        if self._rec_ready:
+            info = self._rec_clip
+            self._voice_reset()
+            if info:
+                self._voice_finish(info)
+            return
+        if not self._rec.active:
+            return
+        if self._rec.elapsed_ms() < recorder_mod.MIN_MS:
+            self.rec_hint.setText("还差一点，至少 5 秒")
+            return
+        try:
+            info = self._rec.stop()
+        except (recorder_mod.RecorderError, OSError) as e:
+            self._voice_reset()
+            self.typing.setText(f"这段没录上：{e}")
+            QTimer.singleShot(4000, lambda: self.typing.setText("") if not self._pending else None)
+            return
+        self._voice_reset()
+        self._voice_finish(info)
+
+    def _voice_reset(self) -> None:
+        self._rec_timer.stop()
+        self._set_recording_style(False)
+        self.rec_bar.hide()
+        self.rec_send.setEnabled(False)
+        self._rec_ready = False
+        self._rec_clip = None
+
+    def _voice_finish(self, info: dict) -> None:
+        kept = bool(self.rec_keep.isChecked())
+        try:
+            row = voice_store.save(config.APP_DIR, info["path"], ms=int(info.get("ms") or 0),
+                                   source="owner", kept=kept, into_temp=not kept)
+            try:
+                Path(str(info["path"])).unlink()
+            except OSError:
+                pass
+        except Exception as e:  # noqa: BLE001
+            self.typing.setText(f"语音没存下来：{e}")
+            QTimer.singleShot(4000, lambda: self.typing.setText("") if not self._pending else None)
+            return
+        self._voice_busy = True
+        self.typing.setText("正在把语音转成文字…")
+        self._dot.start(380)
+
+        def _transcribe():
+            # ASR 是按需启动的；点按录音这条路不经过设置页，得自己把它叫起来
+            from app.services import asr as asr_svc
+
+            if asr_svc.installed() and not asr_svc.health(1.0):
+                asr_svc.start(timeout=30.0)
+            return CoreClient().asr(path=row["path"])
+
+        run_async(_transcribe,
+                  on_ok=lambda res: self._voice_after_asr(row, str((res or {}).get("text") or "")),
+                  on_err=lambda e: self._voice_after_asr(row, "", str(e)))
+
+    def _voice_after_asr(self, row: dict, transcript: str, err: str = "") -> None:
+        self._dot.stop()
+        self.typing.setText("")
+        self._voice_busy = False
+        text = (transcript or "").strip()
+        voice = {"id": row.get("id"), "path": row.get("path"), "ms": int(row.get("dur_ms") or 0),
+                 "kept": bool(row.get("kept")), "deleted": False,
+                 "failed": not bool(text)}
+        self.voice_bubble("me", voice, text)
+        self._pending_echo += 1
+        self._pending = True
+        self.btn_send.setEnabled(False)
+        self.input.setEnabled(False)
+        self._dot.start(380)
+        self.typing.setText(f"{framework_setup.display_name()}正在输入")
+        if err:
+            self.log.info("语音转写失败：%s", err)
+        run_async(lambda: CoreClient().chat(text, session=self.session, voice=voice),
+                  on_ok=self._on_ok, on_err=self._on_err)
+
+    def _voice_cancel(self) -> None:
+        if self._rec_ready:
+            if self._rec_clip:
+                try:
+                    Path(str(self._rec_clip.get("path") or "")).unlink()
+                except OSError:
+                    pass
+            self._voice_reset()
+            self.typing.setText("取消录音")
+            QTimer.singleShot(1200, lambda: self.typing.setText("") if not self._pending else None)
+            return
+        if not self._rec.active:
+            return
+        self._rec_cancelled = True
+        try:
+            self._rec.cancel()
+        finally:
+            self._voice_reset()
+        self.typing.setText("取消录音")
+        QTimer.singleShot(1200, lambda: self.typing.setText("") if not self._pending else None)
+
+    def _set_recording_style(self, on: bool) -> None:
+        self.btn_mic.setProperty("recording", bool(on))
+        self.btn_mic.setText("●" if on else "🎤")
+        try:
+            self.btn_mic.style().unpolish(self.btn_mic)
+            self.btn_mic.style().polish(self.btn_mic)
+        except Exception:  # noqa: BLE001
+            self.log.debug("麦克风按钮换样式失败", exc_info=True)
 
     def apply_pronoun(self) -> None:
         """输入框的「跟她说点什么」要跟着性别走；向导改完性别要能刷新。"""
@@ -807,13 +1036,17 @@ class ChatPage(ChatNannyMixin, QWidget):
             for t in turns:
                 role = t.get("role")
                 text = str(t.get("text") or "").strip()
-                if not text:
+                voice = t.get("voice") or None
+                if not text and not voice:
                     continue
                 if role == "user":
                     if self._pending_echo > 0:
                         self._pending_echo -= 1
                         continue
-                    self.bubble("me", text)
+                    if voice:
+                        self.voice_bubble("me", voice, text)
+                    else:
+                        self.bubble("me", text)
                 else:
                     # 主动说话就是她说了一句，不加任何标签：聊天界面只放对话本身。
                     # 「她/对方在找您」这种提醒属于保姆栏（而且只在忙碌/离开时才提示）。

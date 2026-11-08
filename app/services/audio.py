@@ -17,6 +17,8 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
+from . import voice_level
+
 _winmm = ctypes.WinDLL("winmm") if os.name == "nt" else None
 log = logging.getLogger(__name__)
 
@@ -92,8 +94,16 @@ class _Player:
         self._guard = threading.Lock()
         self._thread: Optional[threading.Thread] = None
         self._alias: Optional[str] = None
+        self._path: str = ""
         self._deadline = 0.0
+        self._t0 = 0.0
+        self._length_ms = 0
         self.last_error = ""
+
+    @property
+    def playing_path(self) -> str:
+        """现在这条是不是还在放（MCI 别名还在）。界面画进度用。"""
+        return self._path if self._alias else ""
 
     # ------------------------------------------------------------------ 对外
     def play(self, path: Path | str) -> bool:
@@ -186,22 +196,40 @@ class _Player:
             _mci_ex(f"close {alias}")
             return False
         self._alias = alias
+        self._path = p
         self._deadline = time.monotonic() + int(length) / 1000.0 + 0.4
         self.last_error = ""
+        self._t0 = time.monotonic()
+        self._length_ms = int(length)
+        try:
+            voice_level.begin(alias, p, self._length_ms, self._t0,
+                              lambda aid=alias: self._alias == aid)
+        except (OSError, ValueError, RuntimeError) as exc:
+            log.debug("口型包络没起来：%r", exc)
         return True
 
     def _stop_now(self) -> None:
         if not self._alias:
             return
+        try:
+            voice_level.end(self._alias)
+        except (OSError, ValueError, RuntimeError) as exc:
+            log.debug("口型包络没收尾：%r", exc)
         _mci_ex(f"stop {self._alias}")
         _mci_ex(f"close {self._alias}")
         self._alias = None
+        self._path = ""
 
     def _reap(self) -> None:
         """播完了就把别名关掉，别攒句柄。"""
         if self._alias and time.monotonic() >= self._deadline:
+            try:
+                voice_level.end(self._alias)
+            except (OSError, ValueError, RuntimeError) as exc:
+                log.debug("口型包络没收尾：%r", exc)
             _mci_ex(f"close {self._alias}")
             self._alias = None
+            self._path = ""
 
 
 player = _Player()

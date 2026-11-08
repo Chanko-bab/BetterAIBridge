@@ -9,6 +9,7 @@ import re
 import time
 
 from . import brain_box, followup, llm_box, memory_box, memory_store, settings as S
+from . import voice_prompt
 
 _sessions: dict[str, list[dict]] = {}
 _loaded = False
@@ -38,10 +39,14 @@ def get_history(session: str) -> list[dict]:
     return list(_sessions.get(session) or [])[-MAX_TURNS * 2:]
 
 
-def remember_turn(session: str, role: str, content: str) -> None:
+def remember_turn(session: str, role: str, content: str, **extra) -> None:
     _load()
     turns = _sessions.setdefault(session, [])
-    turns.append({"role": role, "content": content, "ts": time.strftime("%Y-%m-%dT%H:%M:%S")})
+    turn = {"role": role, "content": content, "ts": time.strftime("%Y-%m-%dT%H:%M:%S")}
+    for k, v in extra.items():
+        if v not in (None, "", {}, []):
+            turn[k] = v
+    turns.append(turn)
     if len(turns) > MAX_STORED:
         del turns[: len(turns) - MAX_STORED]
 
@@ -59,10 +64,15 @@ def is_owner_session(session: str) -> bool:
 
 
 async def reply(session: str, text: str, *, is_owner: bool | None = None,
-                sender_name: str = "", note: str = "") -> dict:
-    """收到一句话 → 她的回答。"""
+                sender_name: str = "", note: str = "",
+                voice: dict | None = None) -> dict:
+    """收到一句话（或一条语音）→ 她的回答。
+
+    voice 不为空时，text 是自动转写（可能为空）；模型看到的是中性提示词，
+    历史里那一轮仍存转写文本 + voice 元数据，桌面壳据此画音频气泡。
+    """
     text = (text or "").strip()
-    if not text:
+    if not text and not voice:
         return {"reply": "", "mood": brain_box.state().get("mood_line", ""), "empty": True}
     if is_owner is None:
         is_owner = is_owner_session(session)
@@ -71,21 +81,26 @@ async def reply(session: str, text: str, *, is_owner: bool | None = None,
     history = get_history(session)
     try:
         from . import emotion_core
-        emotion_core.note_message(text, bool(is_owner))
+        emotion_core.note_message(text or "（语音）", bool(is_owner))
     except Exception as e:
         S.log(f"[emotion] note failed: {e!r}")
-    brain_box.stimulate_text(text, bool(is_owner))
-    query = text if not sender_name else f"{sender_name}: {text}"
+    if text:
+        brain_box.stimulate_text(text, bool(is_owner))
+    if voice:
+        query = voice_prompt.build(text, int(voice.get("ms") or 0),
+                                   failed=bool(voice.get("failed")))
+    else:
+        query = text if not sender_name else f"{sender_name}: {text}"
     try:
         followup.tracker.note_user(session)
     except Exception:
         pass
     out = await llm_box.chat(session, query, history)
     if out:
-        remember_turn(session, "user", text)
+        remember_turn(session, "user", text, voice=voice)
         remember_turn(session, "assistant", out)
         save_sessions()
-        _transcript(session, text, out)
+        _transcript(session, text or "（语音）", out)
     st = brain_box.state()
     if out:
         try:
@@ -145,7 +160,8 @@ def feed(session: str, after: int = 0, limit: int = 200) -> dict:
         if not isinstance(t, dict):
             continue
         out.append({"i": i, "role": t.get("role"), "text": t.get("content"),
-                    "ts": t.get("ts"), "proactive": bool(t.get("proactive"))})
+                    "ts": t.get("ts"), "proactive": bool(t.get("proactive")),
+                    "voice": t.get("voice") or None})
     return {"session": session, "total": total, "turns": out}
 
 

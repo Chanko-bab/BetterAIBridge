@@ -68,6 +68,47 @@ QLabel#BubbleText { color: #22304a; }
 QLineEdit#ChatInput, QPlainTextEdit#ChatInput { padding: 9px 12px; border: 1px solid #dce3ee; border-radius: 8px; background: #ffffff; }
 QLineEdit#ChatInput:focus, QPlainTextEdit#ChatInput:focus { border: 1px solid #5b8def; }
 
+/* 语音消息 */
+QFrame#VoiceBubbleMe { background: #dbe8fe; border-radius: 10px; }
+QFrame#VoiceBubbleHer { background: #ffffff; border: 1px solid #e6ebf3; border-radius: 10px; }
+QPushButton#VoicePlay {
+    background: #ffffff; border: 1px solid #cfdcf2; border-radius: 15px;
+    color: #2f5fbf; font-size: 12px; padding: 0;
+}
+QPushButton#VoicePlay:hover { background: #eef3fb; }
+QPushButton#VoicePlay:disabled { color: #aab6c9; background: #f4f6fa; }
+QProgressBar#VoiceBar { background: #eef2f9; border: none; border-radius: 3px; }
+QProgressBar#VoiceBar::chunk { background: #5b8def; border-radius: 3px; }
+QLabel#VoiceTime { color: #56647f; font-size: 11px; }
+QLabel#VoiceHint { color: #8a96ab; font-size: 10px; }
+QPushButton#VoiceToggle {
+    background: transparent; border: none; color: #2f5fbf; font-size: 10px; padding: 0 2px;
+}
+QPushButton#VoiceToggle:hover { color: #1f4da6; text-decoration: underline; }
+QLabel#VoiceText { color: #4a5670; font-size: 11px; }
+
+QPushButton#MicButton {
+    background: rgba(255, 255, 255, 0.92); border: 1px solid #dce3ee; border-radius: 9px;
+    color: #3f5c8f; font-size: 16px; padding: 0;
+}
+QPushButton#MicButton:hover { background: #eef3fb; }
+QPushButton#MicButton:pressed, QPushButton#MicButton[recording="true"] {
+    background: #fdecec; border: 1px solid #e58a8a; color: #c23b3b;
+}
+QFrame#RecBar { background: rgba(255, 255, 255, 0.94); border: 1px solid #f0d2d2; border-radius: 8px; }
+QLabel#RecDot { color: #d64545; font-size: 14px; }
+QLabel#RecTime { color: #22304a; font-weight: 600; }
+QLabel#RecHint { color: #8a96ab; font-size: 10px; }
+QPushButton#RecSend {
+    background: rgba(63, 124, 232, 0.94); color: #ffffff; border: none; border-radius: 7px;
+    padding: 4px 14px; font-size: 11px;
+}
+QPushButton#RecSend:hover { background: rgba(53, 111, 214, 0.97); }
+QPushButton#RecSend:pressed { background: rgba(44, 96, 196, 1.0); }
+QPushButton#RecSend:disabled {
+    background: rgba(196, 205, 220, 0.75); color: rgba(255, 255, 255, 0.9);
+}
+
 QPushButton#Primary {
     background: rgba(63, 124, 232, 0.94); color: #ffffff; border: none; border-radius: 8px; padding: 8px 18px;
 }

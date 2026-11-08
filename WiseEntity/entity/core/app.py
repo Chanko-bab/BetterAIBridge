@@ -65,6 +65,7 @@ class ChatIn(BaseModel):
     text: str = ""
     sender_name: str = ""
     is_owner: bool | None = None
+    voice: dict | None = None
 
 
 class EventIn(BaseModel):
@@ -502,14 +503,15 @@ def _ensure_configured() -> None:
 
 @app.post("/chat")
 async def chat(inp: ChatIn):
-    if not inp.text.strip():
+    if not inp.text.strip() and not inp.voice:
         raise HTTPException(400, "empty text")
     _ensure_configured()
     before = emotion_core.mood_word()
     await _emit("message.in", {"session": inp.session, "text": inp.text[:500],
-                               "is_owner": bool(inp.is_owner)})
+                               "is_owner": bool(inp.is_owner),
+                               "voice": bool(inp.voice)})
     out = await chat_core.reply(inp.session, inp.text, is_owner=inp.is_owner,
-                                sender_name=inp.sender_name)
+                                sender_name=inp.sender_name, voice=inp.voice)
     await _emit("message.out", {"session": inp.session,
                                 "text": str(out.get("reply") or "")[:500],
                                 "messages": out.get("messages") or []})
@@ -604,6 +606,30 @@ class NoticeIn(BaseModel):
     text: str = ""
     session: str = "web:owner"
     kind: str = "nanny"
+
+
+class VoicePlaybackIn(BaseModel):
+    phase: str = ""
+    data: dict = {}
+
+
+@app.post("/voice/playback")
+async def post_voice_playback(inp: VoicePlaybackIn):
+    """外壳放声音时发来的口型包络：只往桥推，不进对话。"""
+    phase = (inp.phase or "").strip().lower()
+    if phase not in ("started", "level", "ended"):
+        raise HTTPException(400, "phase 只能是 started/level/ended")
+    data = inp.data if isinstance(inp.data, dict) else {}
+    if phase == "level":
+        rec = {"seq": event_bus.last_seq(), "kind": "voice.level",
+               "ts": round(time.time(), 3), "data": data}
+        try:
+            await bridge.fanout(rec)
+        except Exception as e:  # noqa: BLE001
+            S.log(f"[bridge] 推口型失败：{e!r}")
+        return {"ok": True}
+    await _emit("voice.play." + phase, data)
+    return {"ok": True}
 
 
 @app.post("/notice")

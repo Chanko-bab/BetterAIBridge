@@ -6,3 +6,5 @@ shiboken6>=6.12.0,<6.13
 httpx>=0.27,<0.30
 PyYAML>=6.0,<7
 psutil>=5.9,<8
+# 朗读口型：解 mp3/wav 算音量包络（GUI venv 没有 QtMultimedia，也没有 numpy）
+miniaudio>=1.61,<2

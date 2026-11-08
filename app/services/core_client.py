@@ -177,6 +177,10 @@ class CoreClient:
         """让内核的语音服务把一段录音转成字。"""
         return self._post("/asr", {"path": path, "audio": audio, "hint": hint}, timeout=140) or {}
 
+    def voice_playback(self, phase: str, data: Dict[str, Any] | None = None) -> Dict[str, Any]:
+        """把“开始放/音量批/放完”告诉内核，内核再推给订阅的口型模组。"""
+        return self._post("/voice/playback", {"phase": phase, "data": data or {}}, timeout=4) or {}
+
     def ports_map(self) -> Dict[str, Any]:
         return self._get("/ports", timeout=4) or {}
 
@@ -253,12 +257,15 @@ class CoreClient:
             return r.content
 
     def chat(self, text: str, session: Optional[str] = None,
-             is_owner: Optional[bool] = True, sender_name: str = "") -> Dict[str, Any]:
+             is_owner: Optional[bool] = True, sender_name: str = "",
+             voice: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         session = session or config.get("chat.session", "web:owner")
         timeout = float(config.get("chat.timeout_s", 90))
-        return self._post("/chat", {"session": session, "text": text,
-                                    "sender_name": sender_name, "is_owner": is_owner},
-                          timeout=timeout)
+        payload: Dict[str, Any] = {"session": session, "text": text,
+                                   "sender_name": sender_name, "is_owner": is_owner}
+        if voice:
+            payload["voice"] = voice
+        return self._post("/chat", payload, timeout=timeout)
 
     def event(self, kind: str, text: str = "", is_owner: bool = True) -> Dict[str, Any]:
         return self._post("/event", {"kind": kind, "text": text, "is_owner": is_owner})

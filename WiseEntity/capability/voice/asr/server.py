@@ -21,6 +21,23 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+try:
+    import av as _av
+except ImportError:      # 没装引擎时不用管，/stt 会回 503
+    _av = None
+
+if _av is not None and not getattr(_av, "_bab_meta_shim", False):
+    # PyAV 19 去掉了 av.open(metadata_errors=...)，faster-whisper 1.2.1 还在传；
+    # 丢掉这个参数，免得第一次转写直接 500。
+    _av_open = _av.open
+
+    def _open_compat(*args, **kwargs):
+        kwargs.pop("metadata_errors", None)
+        return _av_open(*args, **kwargs)
+
+    _av.open = _open_compat
+    _av._bab_meta_shim = True
+
 VERSION = "0.1.0"
 HERE = Path(__file__).resolve().parent
 
