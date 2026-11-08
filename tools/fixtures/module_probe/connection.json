@@ -1,0 +1,22 @@
+{
+  "provides": {
+    "kind": "bridge",
+    "tools": [
+      {
+        "name": "probe_ping",
+        "endpoint": "ping",
+        "method": "GET",
+        "desc": "测试用：问契约探针还在不在。返回 pong、进程号和实际端口。",
+        "args": {},
+        "max_seconds": 5
+      }
+    ],
+    "endpoints": [
+      {
+        "name": "ping",
+        "path": "/ping",
+        "method": "GET"
+      }
+    ]
+  }
+}

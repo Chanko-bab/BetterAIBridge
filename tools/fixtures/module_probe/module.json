@@ -1,0 +1,44 @@
+{
+  "format": "pbab/1",
+  "api": 1,
+  "id": "probe",
+  "name": "契约探针",
+  "version": "0.1.0",
+  "author": "BAB test",
+  "homepage": "",
+  "kind": "bridge",
+  "summary": "最小合规模组：只做健康检查和 ping，用来验证启动器的模组契约。",
+  "description": "契约测试 fixture：读 BAB_MODULE_PORT 绑定端口，提供 /health 和 /ping，声明一个工具 probe_ping 和一个设置项 probe_echo。",
+  "payload": {
+    "mode": "embedded"
+  },
+  "entry": {
+    "start": "start.cmd"
+  },
+  "health": {
+    "type": "http",
+    "host": "127.0.0.1",
+    "port": 40739,
+    "path": "/health",
+    "timeout_s": 20
+  },
+  "ports": [
+    40739
+  ],
+  "links": {},
+  "memory": {
+    "program": "program_probe",
+    "scopes": [
+      "owner"
+    ]
+  },
+  "bridge": {
+    "wants": [
+      "notice.push",
+      "memory.note"
+    ]
+  },
+  "settings": {
+    "schema": "settings.schema.json"
+  }
+}

@@ -112,6 +112,8 @@ SUITES = [
     ("module_m", "tools/test_module_m.py", "gui", "模组框架 M：清单、二十七个工具、开发说明、旧 id 迁移（没源码就跳过）"),
     ("module_pre", "tools/test_module_pre.py", "any",
      "前置模板 pre：命名/entry/一次性/文档/包校验"),
+    ("module_contract", "tools/test_module_contract.py", "any",
+     "模组合约：最小合规包校验、BAB_MODULE_PORT、http 健康、工具端点、文档口径"),
         ("module_routine", "tools/test_module_routine.py", "gui", "日常事务：清单、十三个工具、时间解析、免打扰、调度（没源码就跳过）"),
         ("module_bili", "tools/test_module_bili.py", "gui",
          "B 站桥：清单、十二个工具、agent.md、自检/日志/设置回读"),

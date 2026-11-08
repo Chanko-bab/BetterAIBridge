@@ -25,7 +25,7 @@
 - `homepage`：可选，项目的公开地址（仓库 / 发布页 / 介绍页），卡片上会附出来。
 - `payload.mode`：`embedded`（文件打进包里）或 `external`（包只带清单，跑 `payload.path` 那个已有目录）。
 - `entry.start`：启用时跑的脚本名（相对包根）。
-- `health`：启用后等它真起来；`port` 或 `process` 两种。
+- `health`：启用后等它真起来；`port`（TCP）、`process`（看 pid）或 `http`（真打一次 `/health`）三种。
 - `links`：启用时建的目录映射（键 = 程序目录里的名字，值 = 模组里的相对路径）。
 - `memory`：装上就建 `entity/memory/<program>/<scope>`。
 
@@ -34,17 +34,24 @@
 
 ### connection.json
 ```json
-{"version": 1,
- "provides": {"tools": ["tool_a"], "persona": "persona.md",
-              "events": ["event_a"], "status": ["port"], "endpoints": ["/api/x"]}}
+{"provides": {
+  "kind": "bridge",
+  "tools": [
+    {"name": "demo_ping", "endpoint": "ping", "method": "GET",
+     "desc": "测试用：问模组还在不在。", "args": {}, "max_seconds": 5}
+  ],
+  "endpoints": [
+    {"name": "ping", "path": "/ping", "method": "GET"}
+  ]
+}}
 ```
 
 ### settings.schema.json（可选）
 ```json
-{"version": 1, "fields": [
-  {"key": "enabled", "type": "bool", "label": "开关", "default": true},
-  {"key": "n", "type": "int", "label": "次数", "default": 3, "min": 0, "max": 50},
-  {"key": "m", "type": "choice", "label": "模式", "default": "a", "choices": ["a","b"]}
+{"schema": "demo-settings/1", "fields": [
+  {"key": "enabled", "type": "bool", "title": "开关", "default": true},
+  {"key": "n", "type": "number", "title": "次数", "default": 3, "minimum": 0, "maximum": 50},
+  {"key": "m", "type": "choice", "title": "模式", "default": "a", "options": ["a","b"]}
 ]}
 ```
 装完后壳会按它生成设置面板，内核侧用 `entity/core/module_cfg.py` 读同一份值。
@@ -229,12 +236,12 @@ python tools/pack_pbab.py examples/module_template dist/template_module.pbab
 
 ## 端口：必须听 `BAB_MODULE_PORT`
 
-外壳不保证你的模组能拿到清单里写的那个端口。`pbab.enable()`（`app/core/pbab.py:617-625`）的做法是：
+外壳不保证你的模组能拿到清单里写的那个端口。`pbab.enable()`（`app/core/pbab.py` 的 `_enable_unlocked()`）的做法是：
 
-1. 取 `config/install.json` 里的 `base`（默认 40720），在 `base+5 … base+19` 里挑第一个没人听的端口，作为本次的 **runtime_port**；
-2. `ports[0]` 只当"作者想要的端口"，实际用 runtime_port，并写进 registry（`pbab.py:659`）；
-3. 用 runtime_port 去等 health（`pbab.py:650`）；
-4. 内核调工具时，地址优先取 registry 里的 runtime_port（`tool_bus.py:58`、`bridge.py:112`、`bridge.py:313`、`app.py:240`）。
+1. 取 `config/install.json` 里的 `base`（默认 40720；如果默认端口被占，安装器可能把整个 base 往后挪，比如 40723），在 `base+5 … base+19` 里挑第一个没人听的端口，作为本次的 **runtime_port**；
+2. `ports[0]` 只当“作者想要的端口”，实际用 runtime_port，并写进 registry；
+3. 用 runtime_port 去等 health；
+4. 内核调工具时，地址优先取 registry 里的 runtime_port（`tool_bus` / `bridge`）。
 
 所以入口脚本要是把端口写死：你自己机器上一般还能用，换台机器（或清单端口被开发树、第二个安装副本、别的软件占着）就立刻变 `broken`——日志里那句 `模组 xxx 用池端口 40725（清单写的是 40730）` 就是外壳在说"我换端口了"。
 
@@ -374,7 +381,7 @@ modules/index.json
 
 1. **命名**：`provides.tools` 里的名字，最后一段要等于某个 `endpoints[].name`。
    `web_fetch` → `fetch`，`web_search` → `search`。
-2. **地址**：取模组 `module.json` 的 `ports[0]`，`http://127.0.0.1:<port><endpoint.path>`。
+2. **地址**：用启动器分配并写进 registry 的 `runtime_port`（也就是模组启动时收到的 `BAB_MODULE_PORT`），`http://127.0.0.1:<runtime_port><endpoint.path>`。清单里的 `ports[0]` 只是手动运行时的默认值，不是内核实际调用地址。
 3. **参数**：`endpoints[].body` 当示例写进提示词；实际上她传什么就发什么（必须是对象）。
 
 ### 她怎么调

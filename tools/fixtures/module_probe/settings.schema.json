@@ -1,0 +1,12 @@
+{
+  "schema": "probe-settings/1",
+  "fields": [
+    {
+      "key": "probe_echo",
+      "type": "bool",
+      "title": "测试开关",
+      "default": true,
+      "description": "只用来验证设置页能不能渲染未知模组的字段，不影响探针行为。"
+    }
+  ]
+}
