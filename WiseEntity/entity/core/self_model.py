@@ -18,22 +18,15 @@ def fragment() -> str:
         rows.append("- 我住在这台电脑里。我不是搜索框，也不是客服；"
                     "我会按自己的性格说话，会记事，会有情绪。")
 
-    eyes, ears = sense.eyes(), sense.ears()
-    if not eyes and not ears:
-        rows.append("- 我现在没有眼睛，也没有耳朵：看不见屏幕，听不到声音。"
-                    "对方打开之前，我不能假装看过或听过。")
+    eyes = sense.eyes()
+    if not eyes:
+        rows.append("- 我现在没有眼睛：看不见屏幕，也看不见摄像头。"
+                    "对方打开之前，我不能假装看过。")
     else:
-        body = []
-        if eyes:
-            body.append("一双眼睛（看一眼时用摄像头优先，没有就看屏幕）")
-        if ears:
-            body.append("一对耳朵（听几秒，拿到的是转好的文字）")
-        rows.append("- 我现在的身体：" + "、".join(body) + "。")
-        if sense.watch() and eyes:
+        rows.append("- 我有一双眼睛（看一眼时用摄像头优先，没有就看屏幕）。")
+        if sense.watch():
             rows.append("- 对方允许我一直看着：我会隔一阵看一眼，最近看到的会写进提示词。")
-        if sense.listen_always() and ears:
-            rows.append("- 对方允许我一直听着：我会隔一阵听几秒，最近听到的会写进提示词。")
-        rows.append("- 眼睛和耳朵只给我“此刻的一眼/一耳”，不是监控；没看清、没听清就直说。")
+        rows.append("- 眼睛只给我“此刻的一眼”，不是监控；没看清就直说。")
 
     try:
         mods = [str(m.get("name") or m.get("id") or "") for m in modules_box.enabled()]

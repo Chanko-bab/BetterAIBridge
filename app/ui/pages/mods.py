@@ -253,6 +253,25 @@ class ModuleCard(QFrame):
         if bits:
             lay.addWidget(QLabel("　·　".join(bits), objectName="Muted", wordWrap=True))
 
+        # 健康：进程活着 != 服务还能用；看门狗每 20 秒写一次 last_health
+        health = str(live.get("last_health") or "")
+        if health == "ok":
+            stamp = str(live.get("last_ok") or "")
+            tail = f"（{stamp[11:19]}）" if len(stamp) >= 19 else ""
+            health_lbl = QLabel(f"健康：正常{tail}", objectName="Muted")
+        elif health == "fail":
+            err = str(live.get("last_error") or "健康检查没通过")
+            if len(err) > 120:
+                err = err[:119] + "…"
+            health_lbl = QLabel(f"健康：异常 · {err}", objectName="Muted", wordWrap=True)
+            health_lbl.setStyleSheet("color: #c2402f;")
+        elif state == "enabled":
+            health_lbl = QLabel("健康：还没检查（看门狗启动后约 1 分钟）", objectName="Muted")
+        else:
+            health_lbl = None
+        if health_lbl is not None:
+            lay.addWidget(health_lbl)
+
         btns = QHBoxLayout()
         btns.setSpacing(8)
         self.toggle = QPushButton("停用" if state == "enabled" else "启用")

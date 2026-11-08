@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 
 from ..core import config, framework_setup, logger
 from ..core.events import bus
-from ..services import probe, update
+from ..services import probe, update, voice_level
 from ..services.core_client import CoreClient, CoreUnavailable
 from ..services.worker import run_async
 from . import fonts
@@ -74,6 +74,7 @@ log = logging.getLogger(__name__)
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
+        voice_level.set_hook(self._voice_level_event)
         from ..core import perf
         perf.mark("ui.window.init")
         self.log = logger.get()
@@ -238,7 +239,6 @@ class MainWindow(QMainWindow):
         # ---------- 耳目（看 / 听，启动器本体） ----------
         self._sense_busy = False
         self._sense_next_eye = 0.0
-        self._sense_next_ear = 0.0
         if not os.environ.get("BAB_NO_AUTORESTART"):
             try:
                 from ..services import sense_server
@@ -255,6 +255,19 @@ class MainWindow(QMainWindow):
             self.timer_bridge = QTimer(self)
             self.timer_bridge.timeout.connect(self._bridge_tick)
             self.timer_bridge.start(250)
+
+            # 语音消息：收掉上次异常退出留下的临时录音，顺手做 30 天清理
+            def _voice_cleanup() -> None:
+                try:
+                    from ..core import config as _cfg
+                    from ..services import voice_store
+
+                    voice_store.purge_temp()
+                    voice_store.janitor(_cfg.APP_DIR, days=30)
+                except Exception:  # noqa: BLE001
+                    log.debug("启动时清理语音失败", exc_info=True)
+
+            threading.Thread(target=_voice_cleanup, name="voice-cleanup", daemon=True).start()
 
         bus.ports_changed.connect(self.on_ports)
         bus.state_changed.connect(self.on_state)
@@ -590,6 +603,12 @@ class MainWindow(QMainWindow):
             sense_server.stop()
         except Exception:  # noqa: BLE001
             self.log.warning("退出时停止耳目小门失败", exc_info=True)
+        try:
+            from ..services import voice_store
+
+            voice_store.purge_temp()
+        except Exception:  # noqa: BLE001
+            self.log.debug("退出时清理临时语音失败", exc_info=True)
         QTimer.singleShot(150, self.close)
         QTimer.singleShot(400, lambda: __import__("PySide6.QtWidgets", fromlist=["QApplication"]).QApplication.quit())
 
@@ -624,6 +643,13 @@ class MainWindow(QMainWindow):
             self.log.debug("设置圆角窗口遮罩失败", exc_info=True)
 
     # ---------- 界面桥 ----------
+    def _voice_level_event(self, phase: str, data: dict) -> None:
+        """口型包络：交给内核，再推给订阅了的模组（没核心就安静丢掉）。"""
+        try:
+            CoreClient(timeout=3).voice_playback(phase, data)
+        except (CoreUnavailable, OSError, ValueError):
+            pass
+
     def _bridge_tick(self) -> None:
         try:
             from ..services import sense_server
@@ -635,12 +661,23 @@ class MainWindow(QMainWindow):
             if rev != self._ui_rev:
                 self._ui_rev = rev
                 self.reload_background()
+            for n in sense_server.drain_notices():
+                text = str(n.get("text") or "")[:120]
+                if not text:
+                    continue
+                title = str(n.get("title") or self.name)
+                icon = (QSystemTrayIcon.Warning if n.get("level") == "warn"
+                        else QSystemTrayIcon.Information)
+                if self._tray_usable():
+                    self.tray.showMessage(title, text, icon, 5000)
+                else:
+                    self.log.info("通知（托盘不可用）：%s", text)
         except Exception:  # noqa: BLE001
             self.log.debug("界面桥 tick 失败", exc_info=True)
 
-    # ---------- 耳目 ----------
+    # ---------- 眼睛 ----------
     def _sense_tick(self) -> None:
-        """一分钟看一次表；真要看/听就丢后台线程，别卡界面。"""
+        """一分钟看一次表；真要偷看就丢后台线程，别卡界面。"""
         if self._sense_busy:
             return
         self._sense_busy = True
@@ -651,41 +688,33 @@ class MainWindow(QMainWindow):
             from ..services import sense
 
             c = sense.cfg()
-            if not (c.get("eyes") or c.get("ears")):
-                self._sense_next_eye = self._sense_next_ear = 0.0
+            if not c.get("eyes"):
+                self._sense_next_eye = 0.0
                 return
-            # “一直看着/一直听着”由内核按自己的间隔采样；这里再偷看会重复抓拍，所以直接让路。
-            if c.get("watch") or c.get("listen_always"):
-                self._sense_next_eye = self._sense_next_ear = 0.0
+            # “一直看着”由内核按自己的间隔采样；这里再偷看会重复抓拍，所以直接让路。
+            if c.get("watch"):
+                self._sense_next_eye = 0.0
                 return
             lv = sense.level()
             if lv <= 0:
-                self._sense_next_eye = self._sense_next_ear = 0.0
+                self._sense_next_eye = 0.0
                 return
             now = time.time()
             if self._sense_next_eye <= 0:
                 self._sense_next_eye = now + sense.next_gap(lv)
-            if self._sense_next_ear <= 0:
-                self._sense_next_ear = now + sense.next_gap(lv)
             try:
                 st = str((CoreClient(timeout=4).presence() or {}).get("state") or "")
             except Exception:  # noqa: BLE001
                 st = ""
             if st != "online":
                 return
-            if c.get("eyes") and now >= self._sense_next_eye:
+            if now >= self._sense_next_eye:
                 self._sense_next_eye = now + sense.next_gap(lv)
                 res = sense.look(quiet=False)
                 sense.tell(f"（你刚才偷偷看了一眼{res.get('what') or ''}："
                            f"{str(res.get('text') or '')[:600]}）")
-            elif c.get("ears") and now >= self._sense_next_ear:
-                self._sense_next_ear = now + sense.next_gap(lv)
-                res = sense.listen(6.0, quiet=False)
-                text = str(res.get("text") or "").strip()
-                if text:
-                    sense.tell(f"（你刚才偷偷听了一下，听到：{text[:600]}）")
         except Exception as exc:  # noqa: BLE001
-            log.warning("耳目 tick 失败：%s", exc)
+            log.warning("眼睛 tick 失败：%s", exc)
         finally:
             self._sense_busy = False
 

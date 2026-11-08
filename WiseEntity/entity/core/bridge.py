@@ -18,10 +18,10 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 import httpx
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel
 
-from . import (brain_box, drives, emotion_core, event_bus, llm_box, memory_box,
+from . import (auth, brain_box, drives, emotion_core, event_bus, llm_box, memory_box,
                memory_store, modules_box, presence, sense, settings as S,
                style_box, tts)
 from .llm_box import NotConfigured
@@ -32,6 +32,7 @@ BRIDGE_VERSION = "1"
 EVENT_KINDS = [
     "message.in", "message.out", "mood.changed", "drive.urge",
     "memory.written", "presence.changed", "proactive.spoke", "world.event",
+    "voice.play.started", "voice.level", "voice.play.ended",
 ]
 
 AUDIT_PATH = S.STATE_DIR / "bridge_audit.jsonl"
@@ -419,6 +420,62 @@ def _sense_look(mid: str, question: str = "", **_ignored: Any) -> Dict[str, Any]
     return _sense_post("/look", {"question": str(question or "")}, timeout=120.0)
 
 
+def _install_media(raw: str) -> Path:
+    """模组要播的音频只许在安装目录里，防止拿桥当任意文件播放器。"""
+    p = Path(str(raw or "").strip()).expanduser()
+    if not str(raw or "").strip():
+        raise HTTPException(400, "path 不能为空")
+    if not p.is_absolute():
+        p = Path(S.APP_ROOT) / p
+    p = p.resolve()
+    root = Path(S.APP_ROOT).resolve()
+    if p != root and root not in p.parents:
+        raise HTTPException(400, "只能播放安装目录里的音频")
+    if not p.is_file():
+        raise HTTPException(400, "找不到这个音频文件")
+    return p
+
+
+def _audio_play(mid: str, path: str = "", **_ignored: Any) -> Dict[str, Any]:
+    """让启动器放一段本地音频（不挡调用：开始播就回）。"""
+    p = _install_media(path)
+    return _sense_post("/audio/play", {"path": str(p)}, timeout=20.0)
+
+
+def _audio_stop(mid: str, **_ignored: Any) -> Dict[str, Any]:
+    return _sense_post("/audio/stop", {}, timeout=10.0)
+
+
+def _tts_speak(mid: str, text: str = "", voice: str = "", rate: str = "",
+               **_ignored: Any) -> Dict[str, Any]:
+    """合成她的声音，并让启动器当场念出来（聊天框之外也能出声）。"""
+    info = _voice_tts(mid, text, voice, rate)
+    played = _sense_post("/audio/play", {"path": info["path"]}, timeout=20.0)
+    info["played"] = bool(played.get("ok"))
+    return info
+
+
+def _ui_notify(mid: str, text: str = "", title: str = "", level: str = "info",
+               **_ignored: Any) -> Dict[str, Any]:
+    """弹一条启动器通知（托盘气泡/窗口提示），不进聊天、不进保姆栏。"""
+    body = str(text or "").strip()
+    if not body:
+        raise HTTPException(400, "text 不能为空")
+    if len(body) > 240:
+        raise HTTPException(400, "通知最多 240 字")
+    lv = str(level or "info").strip().lower()
+    if lv not in ("info", "warn"):
+        lv = "info"
+    return _sense_post("/ui/notify",
+                       {"text": body, "title": str(title or "").strip()[:60], "level": lv},
+                       timeout=10.0)
+
+
+def _sense_status(mid: str, **_ignored: Any) -> Dict[str, Any]:
+    """启动器耳目现在什么样：眼睛开没开、多久看一次、选的是哪台设备。"""
+    return _sense_post("/sense/status", {}, timeout=15.0)
+
+
 def _sense_get(path: str, timeout: float = 20.0) -> Dict[str, Any]:
     """同 _sense_post，只是读：背景参数、鼠标位置走这里。"""
     cfg = _sense_cfg()
@@ -496,13 +553,61 @@ def _project_apply(mid: str, ops: Any = None, reason: str = "", **_ignored: Any)
                        timeout=200.0)
 
 
-def _sense_listen(mid: str, seconds: float = 6, **_ignored: Any) -> Dict[str, Any]:
+async def _voice_message(mid: str, path: str = "", audio: str = "", duration_ms: int = 0,
+                   keep: bool = True, session: str = "web:owner", **_ignored: Any):
+    """模组提交一段语音：和主人按住说话走同一条路（转写 + 音频气泡 + 中性提示）。"""
+    from . import chat_core, voice_store
+
+    src: Optional[Path] = None
+    tmp: Optional[Path] = None
+    if str(path or "").strip():
+        src = Path(str(path).strip())
+        if not src.is_file():
+            raise HTTPException(400, "找不到这段语音")
+    elif str(audio or "").strip():
+        raw_b64 = str(audio).split(",")[-1]
+        try:
+            import base64
+            raw = base64.b64decode(raw_b64, validate=False)
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(400, f"audio 不是合法的 base64：{e}") from e
+        if len(raw) > 40 * 1024 * 1024:
+            raise HTTPException(413, "语音太大（上限 40 MB）")
+        tmp = Path(tempfile.gettempdir()) / "bab-voice" / f"mod-{uuid.uuid4().hex[:10]}.wav"
+        tmp.parent.mkdir(parents=True, exist_ok=True)
+        tmp.write_bytes(raw)
+        src = tmp
+    else:
+        raise HTTPException(400, "path 或 audio 给一个")
+
+    async def _run() -> Dict[str, Any]:
+        assert src is not None
+        dur = int(duration_ms or 0) or voice_store.duration_ms(src)
+        if dur < 5000 or dur > 90000:
+            raise HTTPException(400, "语音要在 5–90 秒之间")
+        row = voice_store.save(S.APP_ROOT, src, ms=dur, source=f"module:{mid}",
+                               kept=bool(keep), into_temp=not bool(keep))
+        text = ""
+        try:
+            tr = _voice_asr(mid, path=str(row.get("path") or ""))
+            text = str((tr or {}).get("text") or "").strip()
+        except Exception as e:  # noqa: BLE001
+            S.log(f"[voice.message] 转写失败：{e!r}")
+        voice_store.update(S.APP_ROOT, str(row.get("id")), transcript=text)
+        voice = {"id": row.get("id"), "path": row.get("path"), "ms": dur,
+                 "kept": bool(keep), "deleted": False, "failed": not bool(text)}
+        out = await chat_core.reply(session, text, voice=voice)
+        return {"id": row.get("id"), "transcript": text,
+                "reply": out.get("reply", ""), "messages": out.get("messages", [])}
+
     try:
-        sec = float(seconds) if seconds is not None else 6.0
-    except Exception:  # noqa: BLE001
-        sec = 6.0
-    sec = max(1.0, min(20.0, sec))
-    return _sense_post("/listen", {"seconds": sec}, timeout=140.0)
+        return await _run()
+    finally:
+        if tmp is not None:
+            try:
+                tmp.unlink()
+            except Exception:  # noqa: BLE001
+                pass
 
 
 CAPS: Dict[str, Dict[str, Any]] = {
@@ -566,10 +671,36 @@ CAPS: Dict[str, Dict[str, Any]] = {
         "args": {"question": "string?"},
         "fn": lambda mid, a: _sense_look(mid, **a),
     },
-    "sense.listen": {
-        "desc": "让启动器的耳目听几秒（麦克风），回听到的话",
-        "args": {"seconds": "number=6"},
-        "fn": lambda mid, a: _sense_listen(mid, **a),
+    "sense.status": {
+        "desc": "启动器耳目现在什么样：眼睛开没开、多久看一次、选的是哪台摄像头/麦克风",
+        "args": {},
+        "fn": lambda mid, a: _sense_status(mid, **a),
+    },
+    "audio.play": {
+        "desc": "让启动器放一段安装目录里的音频（mp3/wav），开始播就回，不挡调用",
+        "args": {"path": "string（安装目录内）"},
+        "fn": lambda mid, a: _audio_play(mid, **a),
+    },
+    "audio.stop": {
+        "desc": "停掉启动器正在放的音频",
+        "args": {},
+        "fn": lambda mid, a: _audio_stop(mid, **a),
+    },
+    "tts.speak": {
+        "desc": "合成她的声音并让启动器当场念出来（返回音频路径、时长、是否播出）",
+        "args": {"text": "string", "voice": "string?", "rate": "string?"},
+        "fn": lambda mid, a: _tts_speak(mid, **a),
+    },
+    "ui.notify": {
+        "desc": "弹一条启动器通知（托盘气泡），不进聊天、不进保姆栏；最多 240 字",
+        "args": {"text": "string", "title": "string?", "level": "info|warn?"},
+        "fn": lambda mid, a: _ui_notify(mid, **a),
+    },
+    "voice.message": {
+        "desc": "把一段 5–90 秒的语音发进主人的聊天框（自动转写，以可播放的音频气泡出现）",
+        "args": {"path": "string?", "audio": "string(base64)?",
+                 "duration_ms": "int?", "keep": "bool=true", "session": "string=web:owner"},
+        "fn": lambda mid, a: _voice_message(mid, **a),
     },
     "ui.background.get": {
         "desc": "看启动器现在的背景设置（开关、效果、跟随、点击、浓淡、速度）",
@@ -670,6 +801,11 @@ async def call(inp: CallIn, x_bab_token: str = Header(default="")) -> Dict[str, 
     if not ok_grant:
         _audit(mid, inp.cap, False, {"why": why})
         raise HTTPException(403, f"这个模组现在拿不到「{inp.cap}」：{why}")
+    if inp.cap == "sense.listen":
+        # 0.6.5 起不再提供“后台偷听”：麦克风只在主人按住说话时开。
+        _audit(mid, inp.cap, False, {"why": "removed"})
+        raise HTTPException(410, "「麦克风偷听」(sense.listen) 已移除：主人说话走聊天框的按住说话；"
+                                 "要让主人听到你收到的语音，请用 voice.message。")
     cap = CAPS.get(inp.cap)
     if not cap:
         _audit(mid, inp.cap, False, {"why": "unknown cap"})
@@ -721,7 +857,10 @@ def bridge_modules() -> Dict[str, Any]:
 
 
 @router.post("/grants")
-def set_grant(inp: GrantIn) -> Dict[str, Any]:
+def set_grant(inp: GrantIn, request: Request) -> Dict[str, Any]:
+    # 授权是写操作：只认启动器（core token）。模组自己的 bridge token 不能改白名单。
+    if not auth.ok(request):
+        raise HTTPException(401, "改桥权限需要启动器身份")
     doc = _grants()
     if not isinstance(doc.get("modules"), dict):
         doc["modules"] = {}

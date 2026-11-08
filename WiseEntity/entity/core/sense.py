@@ -1,9 +1,10 @@
-"""她自己的眼睛和耳朵。
+"""她自己的眼睛。
 
 设备与开关都在启动器那边（`config/sense.json`），内核不抓图、不录音，只做两件事：
-1. 告诉提示词「你现在有没有眼睛/耳朵、是哪个摄像头」；
-2. 她真的想看/想听时，调启动器开的本机小门（127.0.0.1:port，X-Sense-Token）。
+1. 告诉提示词「你现在有没有眼睛、是哪个摄像头」；
+2. 她真的想看时，调启动器开的本机小门（127.0.0.1:port，X-Sense-Token）。
 
+耳朵已经收掉了：主人说话走聊天框的「按住说话」，不再后台偷听。
 小门没开、启动器没跑、开关关着，都给出人话，别让她以为「我天生就看不见」。
 """
 from __future__ import annotations
@@ -20,8 +21,6 @@ from . import settings as S
 CFG_PATH = S.ENTITY / "config" / "sense.json"
 OBS_PATH = S.STATE_DIR / "sense_observations.json"
 WATCH_GAP = 120.0
-LISTEN_GAP = 180.0
-LISTEN_LEN = 4.0
 
 
 def watch_sec() -> float:
@@ -33,22 +32,6 @@ def watch_sec() -> float:
     return max(30.0, min(1800.0, v))
 
 
-def listen_sec() -> float:
-    """一直听着多久采一次（秒），夹在 60 秒–60 分钟。"""
-    try:
-        v = float(_cfg().get("listen_sec") or LISTEN_GAP)
-    except Exception:  # noqa: BLE001
-        v = LISTEN_GAP
-    return max(60.0, min(3600.0, v))
-
-
-def listen_len() -> float:
-    """每次听几秒，夹在 1–15 秒。"""
-    try:
-        v = float(_cfg().get("listen_len") or LISTEN_LEN)
-    except Exception:  # noqa: BLE001
-        v = LISTEN_LEN
-    return max(1.0, min(15.0, v))
 _DEFAULT_CFG = CFG_PATH
 _OLD_CFG = S.APP_ROOT / "config" / "sense.json"
 _migrated = False
@@ -82,18 +65,9 @@ def eyes() -> bool:
     return bool(_cfg().get("eyes"))
 
 
-def ears() -> bool:
-    return bool(_cfg().get("ears"))
-
-
 def watch() -> bool:
     """允许一直看着：定时采样，不是监控录像。"""
     return bool(_cfg().get("watch"))
-
-
-def listen_always() -> bool:
-    """允许一直听着：定时录几秒，不是持续录音。"""
-    return bool(_cfg().get("listen_always"))
 
 
 def camera() -> str:
@@ -144,22 +118,12 @@ def look(question: str = "", quiet: bool = False) -> Dict[str, Any]:
                  timeout=130.0)
 
 
-def listen(seconds: float = 6.0, quiet: bool = False) -> Dict[str, Any]:
-    """听几秒主人那边的声音，返回转写文字。"""
-    try:
-        sec = max(1.0, min(20.0, float(seconds or 6.0)))
-    except Exception:  # noqa: BLE001
-        sec = 6.0
-    return _post("/listen", {"seconds": sec, "quiet": bool(quiet)}, timeout=140.0)
-
-
 def _obs() -> Dict[str, Any]:
     data = S.read_json(OBS_PATH, {}) or {}
     if not isinstance(data, dict):
         data = {}
     data.setdefault("items", [])
     data.setdefault("last_watch", 0.0)
-    data.setdefault("last_listen", 0.0)
     return data
 
 
@@ -197,7 +161,7 @@ def recent_line(minutes: float = 120.0) -> str:
 
 
 def auto_observe() -> list[Dict[str, Any]]:
-    """一直看着/一直听着：到点各采一次，写进最近感知。"""
+    """一直看着：到点采一次，写进最近感知。"""
     try:
         from . import presence
         if not presence.is_online():
@@ -220,62 +184,40 @@ def auto_observe() -> list[Dict[str, Any]]:
         data = _obs()
         data["last_watch"] = now
         _obs_save(data)
-    if bool(c.get("listen_always")) and ears() and now - float(data.get("last_listen") or 0) >= listen_sec():
-        try:
-            res = listen(listen_len(), quiet=False)
-            txt = str((res or {}).get("text") or "").strip()
-            if txt and "没听清" not in txt:
-                remember("听到", txt)
-                out.append({"kind": "听到", "text": txt})
-        except Exception as e:  # noqa: BLE001
-            S.log(f"[sense] listen failed: {type(e).__name__}")
-        data = _obs()
-        data["last_listen"] = now
-        _obs_save(data)
     return out
 
 
 def fragment() -> str:
-    """给系统提示词的一段：她现在到底有没有眼睛和耳朵。"""
+    """给系统提示词的一段：她现在有没有眼睛。"""
     c = _cfg()
-    has_eyes, has_ears = bool(c.get("eyes")), bool(c.get("ears"))
-    cam = camera()
-    mic_name = mic()
-    if not has_eyes and not has_ears:
-        return ("# 你的眼睛和耳朵\n"
-                "主人现在把你的眼睛和耳朵都关着：你看不见屏幕、也听不到声音。"
-                "不要假装看见了或听见了什么；等她打开（设置 → 耳目）你才会知道。")
+    has_eyes = bool(c.get("eyes"))
+    if not has_eyes:
+        return ("# 你的眼睛\n"
+                "主人现在把你的眼睛关着：你看不见屏幕，也看不见摄像头。"
+                "不要假装看见了什么；等她打开（设置 → 耳目）你才会知道。")
 
-    rows = ["# 你的眼睛和耳朵"]
-    if has_eyes:
-        if cam == "screen":
-            where = "屏幕（主人只允许你看屏幕）"
-        elif cam:
-            where = f"摄像头「{cam}」"
-        else:
-            where = "摄像头（自动选的：有就用，没有就看屏幕）"
-        rows.append(
-            f"- 你有一双眼睛：{where}。主人允许你偶尔自己看一眼，"
-            "不会一直盯着；她想让你认真看时，你可以调用 `look_around`"
-            "（question 可选，比如「主人在干什么」）。"
-        )
-    if has_ears:
-        where = f"麦克风「{mic_name}」" if mic_name else "系统默认麦克风"
-        rows.append(
-            f"- 你有一对耳朵：{where}。想听时调用 `listen_now`"
-            "（seconds 可选，1–20，默认 6 秒），听到的是转好的文字。"
-        )
+    cam = camera()
+    rows = ["# 你的眼睛"]
+    if cam == "screen":
+        where = "屏幕（主人只允许你看屏幕）"
+    elif cam:
+        where = f"摄像头「{cam}」"
+    else:
+        where = "摄像头（自动选的：有就用，没有就看屏幕）"
     rows.append(
-        "- 这些只是「此刻的一眼/一耳」，不是监控，也别当成你一直看着对方；"
-        "没看清、没听清就直说，别编。"
+        f"- 你有一双眼睛：{where}。主人允许你偶尔自己看一眼，"
+        "不会一直盯着；她想让你认真看时，你可以调用 `look_around`"
+        "（question 可选，比如「主人在干什么」）。"
+    )
+    rows.append(
+        "- 这只是「此刻的一眼」，不是监控，也别当成你一直看着对方；"
+        "没看清就直说，别编。"
     )
     if watch() and has_eyes:
         rows.append(f"- 对方允许你「一直看着」：每 {watch_sec():.0f} 秒自动看一眼，最近看到的会在下面。")
-    if listen_always() and has_ears:
-        rows.append(f"- 对方允许你「一直听着」：每 {listen_sec():.0f} 秒听 {listen_len():.0f} 秒，最近听到的会在下面。")
     bits = recent_line(120)
     if bits:
-        rows.append("# 你最近看到的 / 听到的（刚采到的，不是猜的）")
+        rows.append("# 你最近看到的（刚采到的，不是猜的）")
         rows.append("- " + bits)
         rows.append("- 聊天时可以用它接一句，比如「我刚刚看到你回来了」；但不要逐字复述整段，也别假装看到没记录的东西。")
     return "\n".join(rows)

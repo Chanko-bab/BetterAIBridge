@@ -56,6 +56,7 @@ from .pbab_process import (
     _pid_alive,
     _port_open,
     _wait_health,
+    check_health,
 )
 
 log = logger.get()
@@ -90,6 +91,16 @@ REQUIRED_FILES = (MANIFEST, INTRODUCE, CONNECTION)
 
 # 改过名的模组：旧 id -> 新 id（启动时一次性迁移 registry 和安装目录）
 LEGACY_ID_MAP: Dict[str, str] = {"m": "m_framework"}
+
+
+def _core_port() -> int:
+    """内核端口：装的时候写进 install.json；读不到就按默认 40720。"""
+    try:
+        doc = json.loads((config.APP_DIR / "config" / "install.json").read_text(encoding="utf-8-sig"))
+        return int(doc.get("core") or doc.get("base") or 40720)
+    except (OSError, ValueError, TypeError):
+        return 40720
+
 
 
 class PbabError(Exception):
@@ -1612,6 +1623,25 @@ def start_enabled() -> List[Dict[str, Any]]:
     return out
 
 
+def health_ok(mod: Dict[str, Any]) -> "tuple[bool, str]":
+    """给看门狗和模组卡用：按清单里的 health 做一次运行期检查。"""
+    mid = str(mod.get("id") or "")
+    try:
+        doc = (manifest(mid) or {}).get("health") or {}
+    except (OSError, ValueError, TypeError, KeyError):
+        doc = {}
+    try:
+        return check_health(mod, doc)
+    except (OSError, RuntimeError, ValueError, TypeError, KeyError) as exc:
+        return False, f"健康检查出错：{exc}"
+
+
+def restart(mid: str) -> Dict[str, Any]:
+    """先停后启：看门狗和模组卡共用，不新增状态机。"""
+    disable(mid)
+    return enable(mid)
+
+
 def enable(mid: str) -> Dict[str, Any]:
     """启用模组；同一个模组的并发启用会排队，后到的复用第一次的结果。"""
     with _module_enable_lock(mid):
@@ -1670,6 +1700,7 @@ def _enable_unlocked(mid: str) -> Dict[str, Any]:
                 log.warning("读取内核 token 失败，模组可能无法调用内核", exc_info=True)
             if runtime_port:
                 env["BAB_MODULE_PORT"] = str(runtime_port)
+            env["BAB_CORE_PORT"] = str(_core_port())
             proc = subprocess.Popen(
                 ["cmd", "/c", str(cmd_path)],
                 cwd=str(cmd_path.parent),

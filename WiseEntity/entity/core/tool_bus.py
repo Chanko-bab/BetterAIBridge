@@ -110,10 +110,21 @@ def _build() -> Dict[str, Dict[str, Any]]:
 
 
 def _builtin_tools() -> Dict[str, Dict[str, Any]]:
-    """内核自己给的工具（不依赖模组）：头像，以及她自己的眼睛和耳朵。"""
+    """内核自己给的工具（不依赖模组）：头像，以及她自己的眼睛。"""
     from . import sense
 
     out: Dict[str, Dict[str, Any]] = {
+        "module_status": {
+            "name": "module_status",
+            "module": "self",
+            "module_name": "她自己",
+            "hint": "看看模组现在都什么状况：谁开着、谁掉线了、为什么",
+            "args": {},
+            "method": "POST",
+            "url": "",
+            "builtin": "module_status",
+            "max_seconds": 5.0,
+        },
         "avatar_see": {
             "name": "avatar_see",
             "module": "self",
@@ -138,20 +149,7 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
             "builtin": "look_around",
             "max_seconds": 130.0,
         }
-    if sense.ears():
-        out["listen_now"] = {
-            "name": "listen_now",
-            "module": "self",
-            "module_name": "她自己",
-            "hint": "听一下主人那边的声音，回来告诉你听到了什么（转好的文字）",
-            "args": {"seconds": "可选：听几秒，1–20，默认 6"},
-            "method": "POST",
-            "url": "",
-            "builtin": "listen_now",
-            "max_seconds": 140.0,
-        }
     return out
-
 
 def tools() -> Dict[str, Dict[str, Any]]:
     now = time.time()
@@ -294,17 +292,13 @@ async def _call_impl(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
     if not spec:
         return {"ok": False, "error": f"没有这个工具：{name}", "tools": list(items)}
     builtin = spec.get("builtin")
-    if builtin in ("look_around", "listen_now"):
+    if builtin == "look_around":
         started = time.time()
         try:
             from . import sense
 
-            if builtin == "look_around":
-                res = await asyncio.to_thread(
-                    sense.look, str(args.get("question") or args.get("q") or ""))
-            else:
-                res = await asyncio.to_thread(
-                    sense.listen, args.get("seconds") or 6)
+            res = await asyncio.to_thread(
+                sense.look, str(args.get("question") or args.get("q") or ""))
             ms = int((time.time() - started) * 1000)
             S.log(f"[tool] {name} ok {ms}ms")
             return {"ok": True, "tool": name, "ms": ms, "result": res}
@@ -313,6 +307,22 @@ async def _call_impl(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
             S.log(f"[tool] {name} failed: {e!r}")
             return {"ok": False, "tool": name, "ms": ms,
                     "error": str(e).strip() or type(e).__name__}
+    if builtin == "module_status":
+        rows = []
+        for m in modules_box.modules():
+            mid = str(m.get("id") or "")
+            rows.append({
+                "id": mid,
+                "name": str(m.get("name") or mid),
+                "state": str(m.get("state") or ""),
+                "health": str(m.get("last_health") or ""),
+                "last_ok": str(m.get("last_ok") or ""),
+                "last_error": str(m.get("last_error") or "")[:300],
+                "port": m.get("runtime_port") or ((m.get("ports") or [0])[0] if m.get("ports") else 0),
+                "pid": m.get("pid") or 0,
+            })
+        return {"ok": True, "tool": name,
+                "result": {"ok": True, "count": len(rows), "modules": rows}}
     if builtin == "avatar_see":
         started = time.time()
         try:

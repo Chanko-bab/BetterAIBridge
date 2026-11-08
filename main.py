@@ -249,6 +249,9 @@ def main() -> int:
 
                 rows = pbab.start_enabled()
                 log.info("启动模组：%s", rows)
+                from app.services.supervisor import supervisor
+
+                supervisor.start()
             except Exception:  # noqa: BLE001
                 log.warning("启动已启用模组失败（不影响主界面）", exc_info=True)
 

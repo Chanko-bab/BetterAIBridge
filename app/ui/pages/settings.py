@@ -329,43 +329,28 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         vbox.addWidget(self.lbl_asr)
         body.addWidget(vcard)
 
-        # ---- 耳目（看 / 听） ----
+        # ---- 眼睛（看） ----
         ocard = QFrame(objectName="Card")
         obox = QVBoxLayout(ocard)
         obox.setContentsMargins(16, 14, 16, 14)
         obox.setSpacing(8)
-        obox.addWidget(QLabel("耳目", objectName="CardTitle"))
+        obox.addWidget(QLabel("眼睛", objectName="CardTitle"))
         obox.addWidget(QLabel(
-            "智能体可以偶尔偷看你一眼、偷听你一下（看摄像头，没有就看屏幕；听麦克风）。"
-            "按需看一眼/听一下仍跟「智能体主动说话」那档走；下面两个「一直」是独立频率，"
-            "拉动那条滑条不会改它们。",
+            "智能体可以偶尔偷看你一眼（首选摄像头，没有就看屏幕）。"
+            "按需看一眼仍跟「智能体主动说话」那档走；下面的「一直看着」是独立频率。",
             objectName="Muted"))
         self.cb_eyes = QCheckBox("允许对方主动偷看你")
         self.cb_eyes.toggled.connect(self.toggle_eyes)
-        self.cb_ears = QCheckBox("允许对方主动偷听你")
-        self.cb_ears.toggled.connect(self.toggle_ears)
         self.cb_watch = QCheckBox("允许对方一直看着你")
         self.cb_watch.toggled.connect(self.toggle_watch)
-        self.cb_listen_always = QCheckBox("允许对方一直听着你")
-        self.cb_listen_always.toggled.connect(self.toggle_listen_always)
         self.sp_watch_sec = QSpinBox()
         self.sp_watch_sec.setRange(30, 1800)
         self.sp_watch_sec.setSingleStep(30)
         self.sp_watch_sec.setSuffix(" 秒")
         self.sp_watch_sec.valueChanged.connect(self.save_sense_timing)
-        self.sp_listen_sec = QSpinBox()
-        self.sp_listen_sec.setRange(60, 3600)
-        self.sp_listen_sec.setSingleStep(60)
-        self.sp_listen_sec.setSuffix(" 秒")
-        self.sp_listen_sec.valueChanged.connect(self.save_sense_timing)
-        self.sp_listen_len = QSpinBox()
-        self.sp_listen_len.setRange(1, 15)
-        self.sp_listen_len.setSuffix(" 秒")
-        self.sp_listen_len.valueChanged.connect(self.save_sense_timing)
-        self.cb_announce = QCheckBox("看/听之前在保姆栏说一声（默认开）")
+        self.cb_announce = QCheckBox("看之前在保姆栏说一声（默认开）")
         self.cb_announce.toggled.connect(self.toggle_announce)
         obox.addWidget(self.cb_eyes)
-        obox.addWidget(self.cb_ears)
         obox.addWidget(self.cb_watch)
         wrow = QHBoxLayout()
         wrow.setSpacing(6)
@@ -374,17 +359,8 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         wrow.addWidget(QLabel("看一眼", objectName="Muted"))
         wrow.addStretch(1)
         obox.addLayout(wrow)
-        obox.addWidget(self.cb_listen_always)
-        lrow = QHBoxLayout()
-        lrow.setSpacing(6)
-        lrow.addWidget(QLabel("频率：每", objectName="Muted"))
-        lrow.addWidget(self.sp_listen_sec)
-        lrow.addWidget(QLabel("听", objectName="Muted"))
-        lrow.addWidget(self.sp_listen_len)
-        lrow.addStretch(1)
-        obox.addLayout(lrow)
         obox.addWidget(QLabel(
-            "间隔越短、每次听得越久，模型和语音调用越频繁，费用与电量消耗越快。",
+            "耳朵已经收掉了：主人说话走聊天框的「按住说话」，不再后台听。",
             objectName="Muted"))
         obox.addWidget(self.cb_announce)
 
@@ -401,6 +377,21 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         orow.addStretch(1)
         obox.addLayout(orow)
 
+        self.lbl_sense = QLabel("", objectName="Muted")
+        self.lbl_sense.setWordWrap(True)
+        obox.addWidget(self.lbl_sense)
+        body.addWidget(ocard)
+
+        # ---- 语音消息（按住说话） ----
+        vcard = QFrame(objectName="Card")
+        vbox = QVBoxLayout(vcard)
+        vbox.setContentsMargins(16, 14, 16, 14)
+        vbox.setSpacing(8)
+        vbox.addWidget(QLabel("语音消息", objectName="CardTitle"))
+        vbox.addWidget(QLabel(
+            "聊天框左边有个麦克风：按住说话，松手发出去。录音最少 5 秒、最多 90 秒；"
+            "发出去会显示成一条可点击播放的音频，同时自动转成文字给她看。",
+            objectName="Muted"))
         mrow = QHBoxLayout()
         mrow.setSpacing(8)
         mrow.addWidget(QLabel("麦克风", objectName="Muted"))
@@ -409,12 +400,24 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         self.cb_mic.currentIndexChanged.connect(self.on_mic_changed)
         mrow.addWidget(self.cb_mic)
         mrow.addStretch(1)
-        obox.addLayout(mrow)
-
-        self.lbl_sense = QLabel("", objectName="Muted")
-        self.lbl_sense.setWordWrap(True)
-        obox.addWidget(self.lbl_sense)
-        body.addWidget(ocard)
+        vbox.addLayout(mrow)
+        self.cb_keep_voice = QCheckBox("保留本次录音（存 30 天，可回放）")
+        self.cb_keep_voice.toggled.connect(self.toggle_keep_voice)
+        vbox.addWidget(self.cb_keep_voice)
+        crow = QHBoxLayout()
+        crow.setSpacing(8)
+        self.btn_clear_voice = QPushButton("清除所有音频", objectName="Ghost")
+        self.btn_clear_voice.clicked.connect(self.clear_voice)
+        crow.addWidget(self.btn_clear_voice)
+        self.lbl_vmsg = QLabel("", objectName="Muted")
+        self.lbl_vmsg.setWordWrap(True)
+        crow.addWidget(self.lbl_vmsg, 1)
+        vbox.addLayout(crow)
+        vbox.addWidget(QLabel(
+            "关掉「保留」时，这条录音只留在本次运行里，退出就删；"
+            "「清除所有音频」会删掉持久和临时的录音，转写文字保留，气泡显示「音频已清除」。",
+            objectName="Muted"))
+        body.addWidget(vcard)
 
         # ---- 启动与后台 ----
         scard = QFrame(objectName="Card")
@@ -681,55 +684,46 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         try:
             c = sense.cfg()
         except Exception as exc:  # noqa: BLE001
-            return f"（读不到耳目配置：{exc}）"
-        eyes, ears = bool(c.get("eyes")), bool(c.get("ears"))
-        if not eyes and not ears:
-            return "两个都关着：智能体不会自己看，也不会自己听。"
-        parts = []
-        if eyes:
-            cam = str(c.get("camera") or "")
-            if cam == "screen":
-                parts.append("看：屏幕（只看屏幕）")
-            else:
-                parts.append("看：" + (f"摄像头「{cam}」" if cam else "自动（有摄像头就拍，没有看屏幕）"))
-        if ears:
-            mic = str(c.get("mic") or "")
-            parts.append("听：" + (f"麦克风 {mic} 号" if mic else "系统默认麦克风"))
-        if c.get("watch") and eyes:
+            return f"（读不到眼睛配置：{exc}）"
+        if not c.get("eyes"):
+            return "眼睛关着：智能体不会自己看。主人按住说话不受影响。"
+        cam = str(c.get("camera") or "")
+        if cam == "screen":
+            where = "屏幕（只看屏幕）"
+        elif cam:
+            where = f"摄像头「{cam}」"
+        else:
+            where = "自动（有摄像头就拍，没有看屏幕）"
+        parts = [f"看：{where}"]
+        if c.get("watch"):
             parts.append(f"一直看着：开（每 {int(c.get('watch_sec') or 120)} 秒看一眼）")
-        if c.get("listen_always") and ears:
-            parts.append(f"一直听着：开（每 {int(c.get('listen_sec') or 180)} 秒听 "
-                         f"{int(c.get('listen_len') or 4)} 秒）")
-        say = "看/听前会在保姆栏说一声。" if c.get("announce", True) else "看/听时不吭声。"
-        return "；".join(parts) + "。" + say + " 主动/定时采样都受这里控制。"
+        say = "看前会在保姆栏说一声。" if c.get("announce", True) else "看时不吭声。"
+        return "；".join(parts) + "。" + say
 
     def refresh_sense(self, devices_only: bool = False) -> None:
         c = sense.cfg()
         self._loading_sense = True
         try:
-            for box, val in ((self.cb_eyes, c.get("eyes")), (self.cb_ears, c.get("ears")),
+            for box, val in ((self.cb_eyes, c.get("eyes")),
                              (self.cb_watch, c.get("watch")),
-                             (self.cb_listen_always, c.get("listen_always")),
                              (self.cb_announce, c.get("announce", True))):
                 box.blockSignals(True)
                 box.setChecked(bool(val))
                 box.blockSignals(False)
-            for spin, val, lo, hi in (
-                    (self.sp_watch_sec, c.get("watch_sec"), 30, 1800),
-                    (self.sp_listen_sec, c.get("listen_sec"), 60, 3600),
-                    (self.sp_listen_len, c.get("listen_len"), 1, 15)):
-                spin.blockSignals(True)
-                spin.setValue(max(lo, min(hi, int(val or lo))))
-                spin.blockSignals(False)
+            self.sp_watch_sec.blockSignals(True)
+            self.sp_watch_sec.setValue(max(30, min(1800, int(c.get("watch_sec") or 120))))
+            self.sp_watch_sec.blockSignals(False)
+            keep = bool(config.get("voice.keep_default", True))
+            self.cb_keep_voice.blockSignals(True)
+            self.cb_keep_voice.setChecked(keep)
+            self.cb_keep_voice.blockSignals(False)
         finally:
             self._loading_sense = False
-        eyes, ears = bool(c.get("eyes")), bool(c.get("ears"))
+        eyes = bool(c.get("eyes"))
         self.cb_watch.setEnabled(eyes)
-        self.cb_listen_always.setEnabled(ears)
         self.sp_watch_sec.setEnabled(eyes and bool(c.get("watch")))
-        self.sp_listen_sec.setEnabled(ears and bool(c.get("listen_always")))
-        self.sp_listen_len.setEnabled(ears and bool(c.get("listen_always")))
         self.lbl_sense.setText(self._sense_state_text())
+        self._refresh_voice_store()
         if self.cb_cam.count() == 0:
             self.cb_cam.addItem("不用摄像头（看屏幕）", "")
         if self.cb_mic.count() == 0:
@@ -745,7 +739,7 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         data = data if isinstance(data, dict) else {}
         c = sense.cfg()
         cur_cam = str(c.get("camera") or "")
-        cur_mic = str(c.get("mic") or "")
+        cur_mic = str(config.get("voice.mic", "") or "")
 
         self.cb_cam.blockSignals(True)
         self.cb_cam.clear()
@@ -777,32 +771,15 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         self.sp_watch_sec.setEnabled(bool(on) and self.cb_watch.isChecked())
         self.lbl_sense.setText(self._sense_state_text())
 
-    def toggle_ears(self, on: bool) -> None:
-        sense.save({"ears": bool(on)})
-        self.cb_listen_always.setEnabled(bool(on))
-        on2 = bool(on) and self.cb_listen_always.isChecked()
-        self.sp_listen_sec.setEnabled(on2)
-        self.sp_listen_len.setEnabled(on2)
-        self.lbl_sense.setText(self._sense_state_text())
-
     def toggle_watch(self, on: bool) -> None:
         sense.save({"watch": bool(on)})
         self.sp_watch_sec.setEnabled(bool(on) and self.cb_eyes.isChecked())
         self.lbl_sense.setText(self._sense_state_text())
 
-    def toggle_listen_always(self, on: bool) -> None:
-        sense.save({"listen_always": bool(on)})
-        on2 = bool(on) and self.cb_ears.isChecked()
-        self.sp_listen_sec.setEnabled(on2)
-        self.sp_listen_len.setEnabled(on2)
-        self.lbl_sense.setText(self._sense_state_text())
-
     def save_sense_timing(self, *_) -> None:
         if getattr(self, "_loading_sense", False):
             return
-        sense.save({"watch_sec": int(self.sp_watch_sec.value()),
-                    "listen_sec": int(self.sp_listen_sec.value()),
-                    "listen_len": int(self.sp_listen_len.value())})
+        sense.save({"watch_sec": int(self.sp_watch_sec.value())})
         self.lbl_sense.setText(self._sense_state_text())
 
     def toggle_announce(self, on: bool) -> None:
@@ -814,8 +791,55 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         self.lbl_sense.setText(self._sense_state_text())
 
     def on_mic_changed(self) -> None:
-        sense.save({"mic": str(self.cb_mic.currentData() or "")})
-        self.lbl_sense.setText(self._sense_state_text())
+        if getattr(self, "_loading_sense", False):
+            return
+        config.set_value("voice.mic", str(self.cb_mic.currentData() or ""))
+        self._refresh_voice_store()
+
+    # ---------------------------------------------------------------- 语音消息
+
+    def toggle_keep_voice(self, on: bool) -> None:
+        if getattr(self, "_loading_sense", False):
+            return
+        config.set_value("voice.keep_default", bool(on))
+        self._refresh_voice_store()
+
+    def clear_voice(self) -> None:
+        try:
+            from ...services import voice_store
+
+            rows = [r for r in voice_store.rows(config.APP_DIR) if not r.get("deleted")]
+        except Exception as exc:  # noqa: BLE001
+            self.lbl_vmsg.setText(f"（读不到录音：{exc}）")
+            return
+        if not rows:
+            self.lbl_vmsg.setText("没有可清除的音频。")
+            return
+        ans = QMessageBox.question(
+            self, "清除所有音频",
+            f"要删掉 {len(rows)} 条录音吗？\n转写文字会保留，气泡会显示「音频已清除」。",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if ans != QMessageBox.Yes:
+            return
+        try:
+            from ...services import voice_store
+
+            res = voice_store.clear_all(config.APP_DIR)
+            mb = float(res.get("bytes") or 0) / 1024 / 1024
+            self.lbl_vmsg.setText(f"已清除 {int(res.get('files') or 0)} 个音频（{mb:.1f} MB）。")
+        except Exception as exc:  # noqa: BLE001
+            self.lbl_vmsg.setText(f"清除失败：{exc}")
+        self._refresh_voice_store()
+
+    def _refresh_voice_store(self) -> None:
+        try:
+            from ...services import voice_store
+
+            rows = [r for r in voice_store.rows(config.APP_DIR) if not r.get("deleted")]
+            total = voice_store.total_bytes(config.APP_DIR)
+            self.lbl_vmsg.setText(f"已有 {len(rows)} 条录音，共 {total / 1024 / 1024:.1f} MB。")
+        except Exception as exc:  # noqa: BLE001
+            self.lbl_vmsg.setText(f"（读不到录音：{exc}）")
 
     # ---------------------------------------------------------------- 启动与后台
 

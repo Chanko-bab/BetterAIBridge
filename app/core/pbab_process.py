@@ -9,8 +9,9 @@ import logging
 import socket
 import subprocess
 import time
+import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from . import config
 
@@ -33,6 +34,25 @@ def _install_base() -> int:
         return 40720
 
 
+def _http_ok(port: int, health: Dict[str, Any], timeout: float = 1.8) -> bool:
+    """模块自己的 /health 语义检查：端口通不代表服务活着。"""
+    try:
+        p = int(port or health.get("port") or 0)
+    except (TypeError, ValueError):
+        return False
+    if not p:
+        return False
+    path = str(health.get("path") or "/health")
+    if not path.startswith("/"):
+        path = "/" + path
+    url = f"http://127.0.0.1:{p}{path}"
+    try:
+        with urllib.request.urlopen(url, timeout=max(0.3, float(timeout))) as resp:
+            return 200 <= int(getattr(resp, "status", 0) or 0) < 400
+    except OSError:
+        return False
+
+
 def _wait_health(health: Dict[str, Any], port: int = 0) -> bool:
     if not health:
         return True
@@ -43,10 +63,65 @@ def _wait_health(health: Dict[str, Any], port: int = 0) -> bool:
             int(port or health.get("port") or 0), str(health.get("host") or "127.0.0.1")
         ):
             return True
+        if health.get("type") == "http" and _http_ok(int(port or health.get("port") or 0), health):
+            return True
         if health.get("type") == "process" and health.get("pid") and _pid_alive(int(health["pid"])):
             return True
         time.sleep(0.5)
     return False
+
+
+def check_health(mod: Dict[str, Any], health: Dict[str, Any] | None = None,
+                 timeout: float = 1.8) -> Tuple[bool, str]:
+    """运行期健康检查：返回 (ok, 人话原因)。
+
+    - 有 pid 先看进程；进程没了，端口被别的程序占着也不算它活着。
+    - health.type=http 时真请求一次 /health；port 只做 TCP；process 只看 pid。
+    - 模组没写 health 时退回「端口能连」或「进程还在」。
+    """
+    doc = health if health is not None else (mod.get("health") or {})
+    try:
+        port = int(mod.get("runtime_port") or 0)
+    except (TypeError, ValueError):
+        port = 0
+    if not port:
+        try:
+            ports = mod.get("ports") or []
+            port = int(ports[0]) if ports else 0
+        except (TypeError, ValueError, IndexError):
+            port = 0
+        if not port:
+            try:
+                port = int(doc.get("port") or 0)
+            except (TypeError, ValueError):
+                port = 0
+    try:
+        pid = int(mod.get("pid") or 0)
+    except (TypeError, ValueError):
+        pid = 0
+
+    if pid and not _pid_alive(pid):
+        return False, f"进程 {pid} 已经不在"
+    typ = str(doc.get("type") or "")
+    if typ == "http":
+        if _http_ok(port, doc, timeout):
+            return True, ""
+        return False, f"HTTP 健康检查没通过（端口 {port}{doc.get('path') or '/health'}）"
+    if typ == "port":
+        if port and _port_open(port, str(doc.get("host") or "127.0.0.1"), timeout):
+            return True, ""
+        return False, f"端口 {port} 连不上"
+    if typ == "process":
+        return (True, "") if pid else (False, "清单没给 pid")
+    if port:
+        if _port_open(port, timeout=timeout):
+            return True, ""
+        return False, f"端口 {port} 连不上"
+    if pid:
+        return True, ""
+    return True, ""
+
+
 def _pid_alive(pid: int) -> bool:
     try:
         out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}"], capture_output=True, text=True, timeout=8)

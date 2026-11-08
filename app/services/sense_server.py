@@ -9,6 +9,7 @@ import hmac
 import logging
 import json
 import threading
+import time
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, Optional
@@ -19,7 +20,8 @@ log = logging.getLogger("xiaochen.sense_server")
 
 _LOCK = threading.Lock()
 STATE: Dict[str, Any] = {"server": None, "thread": None, "port": 0, "token": "", "error": "",
-                         "bg_rev": 0, "mouse": {"x": 0, "y": 0, "inside": False}}
+                         "bg_rev": 0, "mouse": {"x": 0, "y": 0, "inside": False},
+                         "notices": []}
 
 
 def set_mouse(x: float, y: float, inside: bool) -> None:
@@ -37,6 +39,44 @@ def ui_rev() -> int:
 
 def _bump_ui() -> None:
     STATE["bg_rev"] = int(STATE.get("bg_rev") or 0) + 1
+
+
+def notify(text: str, title: str = "", level: str = "info") -> None:
+    """模组要的通知先排队，主线程 250ms 的界面桥会取走并弹托盘。"""
+    box = STATE.setdefault("notices", [])
+    with _LOCK:
+        if len(box) >= 20:
+            del box[: len(box) - 19]
+        box.append({"text": str(text), "title": str(title), "level": str(level),
+                    "at": time.time()})
+
+
+def drain_notices() -> list[Dict[str, Any]]:
+    """主线程取走通知；返回后队列清空。"""
+    with _LOCK:
+        box = STATE.setdefault("notices", [])
+        out = list(box)
+        box.clear()
+    return out
+
+
+def _media_path(raw: str) -> Path:
+    """只允许播安装目录里的音频；越界、目录、不存在的都拒绝。"""
+    from ..core import config
+
+    text = str(raw or "").strip()
+    if not text:
+        raise ValueError("path 不能为空")
+    p = Path(text).expanduser()
+    root = Path(config.APP_DIR).resolve()
+    if not p.is_absolute():
+        p = root / p
+    p = p.resolve()
+    if p != root and root not in p.parents:
+        raise ValueError("只能播放安装目录里的音频")
+    if p.is_dir() or not p.is_file():
+        raise ValueError("找不到这个音频文件")
+    return p
 
 
 def _safe_dir(raw: str) -> Path:
@@ -123,11 +163,37 @@ class _Handler(BaseHTTPRequestHandler):
                 q = str(payload.get("question") or "")
                 doc = sense.look(q, quiet=True) if payload.get("quiet") else sense.look(q)
             elif path == "/listen":
-                try:
-                    sec = float(payload.get("seconds") or 6)
-                except (TypeError, ValueError):
-                    sec = 6.0
-                doc = sense.listen(sec, quiet=True) if payload.get("quiet") else sense.listen(sec)
+                self._send(410, {"ok": False, "error": "耳朵已收掉：主人说话请用聊天框的按住说话"})
+                return
+            elif path == "/audio/play":
+                from . import audio
+
+                p = _media_path(str(payload.get("path") or ""))
+                ok = bool(audio.player.play(p))
+                doc = {"ok": ok, "path": str(p), "playing": bool(audio.player.playing_path)}
+                if not ok:
+                    raise RuntimeError(audio.player.last_error or "启动器放不出这段音频")
+            elif path == "/audio/stop":
+                from . import audio
+
+                audio.player.stop()
+                doc = {"ok": True}
+            elif path == "/ui/notify":
+                body = str(payload.get("text") or "").strip()
+                if not body:
+                    raise ValueError("text 不能为空")
+                if len(body) > 240:
+                    raise ValueError("通知最多 240 字")
+                level = str(payload.get("level") or "info").strip().lower()
+                notify(body, str(payload.get("title") or "").strip()[:60],
+                       level if level in ("info", "warn") else "info")
+                doc = {"ok": True, "queued": True}
+            elif path == "/sense/status":
+                c = sense.cfg()
+                doc = {"ok": True, "eyes": bool(c.get("eyes")), "watch": bool(c.get("watch")),
+                       "watch_sec": int(c.get("watch_sec") or 0),
+                       "camera": str(c.get("camera") or ""), "mic": str(c.get("mic") or ""),
+                       "announce": bool(c.get("announce"))}
             elif path == "/ui/background":
                 from ..ui import backdrop
                 keep = {"enabled", "effect", "follower", "click", "click_style",

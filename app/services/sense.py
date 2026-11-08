@@ -1,11 +1,13 @@
-"""启动器本体的耳目：摄像头、屏幕、麦克风。
+"""启动器本体的眼睛：摄像头、屏幕。
 
 `app/services/` 里的 `senses.py` / `camgrab.py` / `ocr.ps1` 提供底层采集；设置页
-开两个开关、选设备，她在你允许的时候偶尔看一眼/听一下，保姆栏说一声，再把这句
-「看到的/听到的」交给内核。
+开一个开关、选摄像头，她在你允许的时候偶尔看一眼，保姆栏说一声，再把这句
+「看到的」交给内核。
 
-只依赖标准库 + Windows 自带的东西（GDI 截图、winmm 录音、VFW/MediaFoundation
-拍照、PowerShell OCR），不额外装包。
+耳朵已经收掉了：主人说话走聊天框的「按住说话」，这里不再后台录音。
+
+只依赖标准库 + Windows 自带的东西（GDI 截图、VFW/MediaFoundation 拍照、
+PowerShell OCR），不额外装包。
 """
 from __future__ import annotations
 
@@ -49,15 +51,11 @@ def _migrate_old() -> None:
 
 DEFAULTS: Dict[str, Any] = {
     "eyes": False,       # 允许对方主动偷看
-    "ears": False,       # 允许对方主动偷听
     "watch": False,      # 允许对方一直看着（定时采样）
-    "listen_always": False,  # 允许对方一直听着（定时采样）
     "watch_sec": 120,    # 一直看着：每多少秒采一次
-    "listen_sec": 180,   # 一直听着：每多少秒听一次
-    "listen_len": 4,     # 一直听着：每次听几秒
     "camera": "",        # 空 = 不用摄像头（看屏幕）；否则序号或名字
-    "mic": "",           # 空 = 系统默认麦克风；否则序号
-    "announce": True,    # 看/听之前在保姆栏说一声
+    "mic": "",           # 系统默认麦克风；否则序号（只给「按住说话」用）
+    "announce": True,    # 看之前在保姆栏说一声
     "port": 0,           # 耳目小服务的端口（启动时写）
     "token": "",         # 给小服务用的一次性令牌
     "updated_at": "",
@@ -108,7 +106,7 @@ def save(patch: Dict[str, Any]) -> Dict[str, Any]:
 
 def enabled() -> bool:
     c = cfg()
-    return bool(c.get("eyes") or c.get("ears"))
+    return bool(c.get("eyes"))
 
 
 def level() -> int:
@@ -215,9 +213,10 @@ def look(question: str = "", quiet: bool = False) -> Dict[str, Any]:
     source = "screen"
     what = "屏幕"
     cam = str(c.get("camera") or "").strip()
-    if cam == "screen":
+    explicit_screen = cam == "screen"
+    if explicit_screen:
         cam = ""
-    if not cam:
+    if not cam and not explicit_screen:
         cam = first_camera()          # 自动：有摄像头就用，没有才看屏幕
     if cam:
         idx = camera_index(cam)
@@ -250,28 +249,6 @@ def look(question: str = "", quiet: bool = False) -> Dict[str, Any]:
         desc = f"{desc}\n画面上的字：{words[:500]}" if desc else f"画面上的字：{words[:500]}"
     return {"ok": True, "source": source, "what": what, "path": str(out),
             "text": desc.strip(), "ocr": words}
-
-
-# ------------------------------------------------------------------ 听
-
-def listen(seconds: float = 6.0, quiet: bool = False) -> Dict[str, Any]:
-    """听几秒：录 wav → 内核的语音服务转文字。"""
-    c = cfg()
-    if not quiet and bool(c.get("announce", True)):
-        announce("智能体刚刚偷偷听了你一下。")
-    senses.ensure_dirs()
-    sec = max(2.0, min(15.0, float(seconds or 6.0)))
-    rec = senses.record(sec, device=senses.pick_mic(str(c.get("mic") or "")), rate=senses.MIC_RATE)
-    path = Path(str(rec.get("path") or ""))
-    senses.prune(senses.CLIPS)
-    text = ""
-    try:
-        res = CoreClient(timeout=140).asr(str(path), hint="对方刚才说的话，可能是口语、短句。")
-        text = str((res or {}).get("text") or "").strip()
-    except Exception as e:  # noqa: BLE001
-        text = f"（这次没听清：{str(e).strip() or type(e).__name__}）"
-    return {"ok": True, "path": str(path), "seconds": rec.get("seconds"),
-            "text": text, "loud": rec.get("rms"), "source": "mic"}
 
 
 # ------------------------------------------------------------------ 告诉内核

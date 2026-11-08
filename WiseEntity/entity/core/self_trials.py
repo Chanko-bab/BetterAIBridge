@@ -21,7 +21,7 @@ TRIAL_GAP = 20 * 60 * 60
 _RUNNING = False
 
 L0 = {"avatar_see"}
-L1 = {"look_around", "listen_now"}
+L1 = {"look_around"}
 
 
 def _state() -> Dict[str, Any]:
@@ -49,7 +49,7 @@ def candidates() -> List[str]:
         names = set(tool_bus.tools().keys())
     except Exception:
         names = set()
-    return [n for n in ("avatar_see", "look_around", "listen_now") if n in names]
+    return [n for n in ("avatar_see", "look_around") if n in names]
 
 
 def due() -> bool:
