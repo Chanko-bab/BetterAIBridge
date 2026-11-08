@@ -27,6 +27,7 @@ from ..services import probe, update, voice_level
 from ..services.core_client import CoreClient, CoreUnavailable
 from ..services.worker import run_async
 from . import fonts
+from .winquiet import hide_console
 from .backdrop import Backdrop
 from .dialogs.avatar_dialog import AvatarDialog
 from .widgets.avatar_card import AvatarCard
@@ -816,6 +817,7 @@ class MainWindow(QMainWindow):
         self.log.warning("内核不在，自动拉起：%s", target)
         self.foot_label.setText("内核不在，正在自动拉起…")
         p = QProcess(self)
+        hide_console(p)
         p.setProgram("cmd.exe")
         p.setArguments(["/c", target])
         p.finished.connect(self._core_proc_done)

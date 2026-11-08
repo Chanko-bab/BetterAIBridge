@@ -13,7 +13,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from . import config
+from . import config, winproc
 
 log = logging.getLogger(__name__)
 
@@ -123,8 +123,19 @@ def check_health(mod: Dict[str, Any], health: Dict[str, Any] | None = None,
 
 
 def _pid_alive(pid: int) -> bool:
+    # 看门狗每 20 秒查一次；优先走 psutil，避免每次拉起 tasklist 闪一下黑窗。
     try:
-        out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}"], capture_output=True, text=True, timeout=8)
+        import psutil  # type: ignore
+    except (ImportError, OSError):
+        psutil = None
+    if psutil is not None:
+        try:
+            return bool(psutil.pid_exists(int(pid)))
+        except (TypeError, ValueError):
+            return False
+    try:
+        out = winproc.run(["tasklist", "/FI", f"PID eq {pid}"],
+                          capture_output=True, text=True, timeout=8)
         return str(pid) in (out.stdout or "")
     except (OSError, subprocess.SubprocessError):
         return False
@@ -140,7 +151,7 @@ def _kill_pid_files(dirs: List[Path]) -> int:
                 except (ValueError, OSError):
                     f.unlink(missing_ok=True)
                     continue
-                subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
+                winproc.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
                 killed += 1
                 try:
                     f.unlink()
@@ -211,7 +222,7 @@ def _kill_port_owners(ports: List[int], only_dir: str = "") -> int:
                 if needle not in cmd and needle not in cwd:
                     log.info("端口 %s 被别的安装先占住了（pid %s），不动它", c.laddr.port, c.pid)
                     continue
-            subprocess.run(["taskkill", "/PID", str(c.pid), "/T", "/F"], capture_output=True)
+            winproc.run(["taskkill", "/PID", str(c.pid), "/T", "/F"], capture_output=True)
             killed += 1
         except (psutil.Error, OSError, ValueError):
             continue

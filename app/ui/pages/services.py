@@ -17,9 +17,10 @@ from PySide6.QtWidgets import (
     QFrame, QGridLayout, QHBoxLayout, QLabel, QMessageBox, QPushButton, QVBoxLayout, QWidget,
 )
 
-from ...core import config, logger, registry
+from ...core import config, logger, registry, winproc
 from ...core.events import bus
 from ...services.worker import run_async
+from ..winquiet import hide_console
 
 try:
     import psutil  # type: ignore
@@ -66,8 +67,8 @@ def listening_map() -> dict[int, tuple[int, str]]:
         except (psutil.Error, OSError):
             pass
     try:
-        res = subprocess.run(["netstat", "-ano", "-p", "TCP"], capture_output=True,
-                             text=True, timeout=5, errors="ignore")
+        res = winproc.run(["netstat", "-ano", "-p", "TCP"], capture_output=True,
+                          text=True, timeout=5, errors="ignore")
         for line in (res.stdout or "").splitlines():
             parts = line.split()
             if len(parts) >= 5 and parts[3].upper() == "LISTENING" and ":" in parts[1]:
@@ -93,7 +94,7 @@ def kill_pid(pid: int, wait: float = 3.0) -> bool:
         return False
     if psutil is None:
         try:
-            subprocess.run(["taskkill", "/PID", str(pid), "/F"], capture_output=True, timeout=8)
+            winproc.run(["taskkill", "/PID", str(pid), "/F"], capture_output=True, timeout=8)
             return True
         except Exception:  # noqa: BLE001
             return False
@@ -317,6 +318,7 @@ class ServicesPage(QWidget):
 
     def _run(self, program: str, args: list[str], label: str) -> None:
         p = QProcess(self)
+        hide_console(p)
         p.setProgram(program)
         p.setArguments(args)
         p.readyReadStandardOutput.connect(lambda: self._drain(p, label))

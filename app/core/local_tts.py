@@ -25,7 +25,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 
 import httpx
 
-from . import config
+from . import config, winproc
 
 log = logging.getLogger("xiaochen.local_tts")
 
@@ -158,7 +158,7 @@ def _pid_on_port(port: int) -> Optional[int]:
     if os.name != "nt":
         return None
     try:
-        out = subprocess.run(
+        out = winproc.run(
             ["netstat", "-ano", "-p", "tcp"],
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5,
         ).stdout
@@ -183,8 +183,8 @@ def _pid_on_port(port: int) -> Optional[int]:
 def _kill_pid(pid: int) -> None:
     """只杀一个明确 pid；Windows 用 taskkill 连子进程一起收。"""
     if os.name == "nt":
-        subprocess.run(["taskkill", "/PID", str(int(pid)), "/T", "/F"],
-                       capture_output=True, timeout=10)
+        winproc.run(["taskkill", "/PID", str(int(pid)), "/T", "/F"],
+                    capture_output=True, timeout=10)
     else:
         try:
             os.kill(int(pid), 15)
@@ -221,8 +221,8 @@ def _local_health(port: Optional[int] = None) -> Optional[Dict[str, Any]]:
 
 
 def _run(cmd: List[str], cwd: Optional[Path] = None) -> str:
-    p = subprocess.run(cmd, cwd=str(cwd) if cwd else None, capture_output=True,
-                       text=True, encoding="utf-8", errors="replace", timeout=1800)
+    p = winproc.run(cmd, cwd=str(cwd) if cwd else None, capture_output=True,
+                    text=True, encoding="utf-8", errors="replace", timeout=1800)
     if p.returncode != 0:
         tail = (p.stderr or p.stdout or "").strip()[-1200:]
         raise LocalTtsError(f"命令失败（{cmd[0]}）：{tail or p.returncode}")

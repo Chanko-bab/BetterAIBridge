@@ -47,7 +47,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
-from . import config, logger, registry
+from . import config, logger, registry, winproc
 from .pbab_process import (
     _install_base,
     _kill_module_procs,
@@ -304,7 +304,7 @@ def detect_require(req: Dict[str, Any]) -> str:
             return str(p)
     for exe in det.get("where") or []:
         try:
-            out = subprocess.run(["where", str(exe)], capture_output=True, text=True, timeout=8)
+            out = winproc.run(["where", str(exe)], capture_output=True, text=True, timeout=8)
         except (OSError, subprocess.SubprocessError):
             continue
         for line in (out.stdout or "").splitlines():
@@ -656,7 +656,7 @@ def _powershell_signature(path: Path) -> Dict[str, Any]:
         "powershell", "-NoProfile", "-NonInteractive",
         "-EncodedCommand", encoded,
     ]
-    out = subprocess.run(cmd, capture_output=True, timeout=30)
+    out = winproc.run(cmd, capture_output=True, timeout=30)
     text = out.stdout.decode("utf-8", "replace").strip()
     if not text:
         raise PbabError("PowerShell 没有输出")
@@ -865,7 +865,7 @@ def start_installer(mid: str, rid: str) -> Dict[str, Any]:
             raise PbabError(f"打开安装程序失败（ShellExecute 返回 {code}）")
     else:
         try:
-            subprocess.Popen([str(inst)], cwd=str(parent))
+            winproc.popen([str(inst)], cwd=str(parent))
         except OSError as exc:
             if getattr(exc, "winerror", None) == 740:
                 raise PbabError("这个安装程序需要管理员权限；请在清单里把 run.elevate 设为 true") from exc
@@ -1578,7 +1578,7 @@ def _create_links(mod: Dict[str, Any], manifest_doc: Dict[str, Any]) -> List[str
             log.warning("links 目标不存在，跳过：%s -> %s", link, target)
             continue
         link.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(target)], capture_output=True)
+        winproc.run(["cmd", "/c", "mklink", "/J", str(link), str(target)], capture_output=True)
         made.append(str(link))
     return made
 
@@ -1586,7 +1586,7 @@ def _create_links(mod: Dict[str, Any], manifest_doc: Dict[str, Any]) -> List[str
 def _remove_links(paths: List[str]) -> None:
     for p in paths:
         try:
-            subprocess.run(["cmd", "/c", "rmdir", str(p)], capture_output=True)
+            winproc.run(["cmd", "/c", "rmdir", str(p)], capture_output=True)
         except Exception:
             log.debug("删除模组链接失败：%s", p, exc_info=True)
 
@@ -1769,7 +1769,7 @@ def disable(mid: str) -> Dict[str, Any]:
     mod = registry.get(mid) or {}
     pid = mod.get("pid")
     if pid:
-        subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
+        winproc.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
     dirs = [Path(str(mod.get("dir") or module_dir(mid)))]
     pr = payload_root(mod) if mod else None
     if pr and str(pr) != str(dirs[0]):

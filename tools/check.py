@@ -95,6 +95,8 @@ SUITES = [
      "语音消息 UI：点按开始、发送/取消、5 秒门槛、90 秒待发送、音频气泡"),
     ("supervisor", "tools/test_supervisor.py", "any",
      "模组看门狗：连续失败才重启、退避、每小时上限、停手记忆、HTTP 健康"),
+    ("no_window", "tools/test_no_window.py", "any",
+     "控制台弹窗：子进程必须 CREATE_NO_WINDOW、看门狗走 psutil、QProcess 隐藏"),
     ("voice_level", "tools/test_voice_level.py", "gui",
      "朗读口型：包络算法/缓存、started/level/ended、停止收尾"),
     ("styles", "tools/test_styles.py", "kernel", "人设：16 套底表与开局取值"),
