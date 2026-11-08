@@ -12,13 +12,16 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PKG = Path(r"D:\BAB-release\pre-program_pre_id.pbab")
+PKG = Path(r"D:\PBAB完成品\pre-program_pre_id.pbab")
 
 
 def _find_src() -> Path | None:
-    direct = Path(r"D:\BAB-release\pre\pre-program_pre_id.pbab")
-    if direct.is_dir():
-        return direct
+    for direct in (
+        Path(r"D:\Program for BAB\pre-program_pre_id.pbab"),
+        Path(r"D:\BAB-release\pre\pre-program_pre_id.pbab"),
+    ):
+        if direct.is_dir():
+            return direct
     builds = Path(r"D:\BAB-release\module-builds")
     if builds.is_dir():
         found = [p for p in builds.glob("*/src-before/pre-program_pre_id.pbab") if p.is_dir()]
