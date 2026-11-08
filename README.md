@@ -16,7 +16,7 @@
 ## 0.6.2–0.6.4 这一版
 
 - 0.6.2：自动更新改成独立助手——启动器退出后由 `pythonw.exe -I` 起 helper，先停进程、备份、安全解压，再用 `wscript.exe` 拉起来，失败回滚；更新对话框等到 helper 就绪才退出。安装器默认目录带版本名，快捷方式统一叫 `BetterAIBridge.lnk`。0.6.0/0.6.1 的旧更新脚本可能没执行过，这两版请手动装 0.6.2 或更新。
-- 0.6.3：安装器迁移旧快捷方式——旧入口指向的版本还在，就保留成带版本号的 `BetterAIBridge <版本>.lnk`；同一目录覆盖安装不重复迁移；安装器校验改用 SHA-256，不再依赖取不到路径的 Authenticode。
+- 0.6.3：安装器迁移旧快捷方式——旧入口指向的版本还在，就保留成带版本号的 `BetterAIBridge <版本>.lnk`；同一目录覆盖安装不重复迁移。
 - 0.6.4：当前版入口固定叫 `BetterAIBridgeLauncher.lnk`，旧版本入口叫 `BetterAIBridgeLauncher <版本>.lnk`；自动更新只换代码不动快捷方式，启动器首次启动会一次性把旧的 `BetterAIBridge.lnk` 迁成新名字。
 - 0.6.3→0.6.4 的自动更新在本机实测通过：启动器退出、备份、覆盖、自动重开；`logs/update.log` 记 `update ok`。
 
