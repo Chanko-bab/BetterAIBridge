@@ -53,6 +53,19 @@ def test_scan() -> None:
 
         check(nanny_scan.context_for("今天天气怎么样") == "", "普通闲聊不扫项目")
 
+        (tmp / "entity" / "config").mkdir(parents=True)
+        (tmp / "entity" / "config" / "llm.json").write_text(
+            '{"api_key": "needle-secret"}', encoding="utf-8")
+        (tmp / "cert.key").write_text("needle-key", encoding="utf-8")
+        secret = nanny_scan.read_file("entity/config/llm.json")
+        check("密钥" in secret and "needle-secret" not in secret, "拒绝读 API Key")
+        key = nanny_scan.read_file("cert.key")
+        check("密钥" in key, "拒绝读私钥")
+        hits2 = nanny_scan.search("needle-secret")
+        check("llm.json" not in hits2, "关键词搜索跳过密钥文件")
+        ctx3 = nanny_scan.context_for("看一下 entity/config/llm.json")
+        check("needle-secret" not in ctx3, "按路径扫描也不泄密钥")
+
         outside = nanny_scan.read_file(str(Path("..") / "outside.py"))
         check("目录外面" in outside, "程序目录外拒绝读取")
     finally:

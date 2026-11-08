@@ -19,6 +19,9 @@ MAX_FILES = 400
 MAX_BYTES = 2 * 1024 * 1024
 
 SKIP_DIRS = {".venv", "__pycache__", ".git", "node_modules", ".idea", ".mypy_cache"}
+# 保姆只读项目，但密钥/令牌文件不在「项目知识」范围里：宁可看不见。
+DENY_NAMES = {"llm.json", "core_token", "sense.json", "bridge_token.json"}
+DENY_SUFFIXES = {".key", ".pem"}
 TEXT_EXT = {
     ".py", ".pyi", ".md", ".txt", ".json", ".jsonl", ".yaml", ".yml",
     ".toml", ".ini", ".cfg", ".ps1", ".bat", ".cmd", ".qss", ".css",
@@ -57,6 +60,10 @@ def _rel(p: Path) -> str:
         return p.relative_to(_root()).as_posix()
     except ValueError:
         return p.as_posix()
+
+
+def _denied(p: Path) -> bool:
+    return p.name.lower() in DENY_NAMES or p.suffix.lower() in DENY_SUFFIXES
 
 
 def list_dir(rel: str = "", depth: int = 1, limit: int = MAX_ENTRIES) -> str:
@@ -101,6 +108,8 @@ def read_file(rel: str, max_chars: int = MAX_READ) -> str:
         return str(exc)
     if not p.is_file():
         return f"（{_rel(p)} 不是文件）"
+    if _denied(p):
+        return f"（{_rel(p)} 里可能有密钥，我不读）"
     if p.suffix.lower() not in TEXT_EXT:
         return f"（{_rel(p)} 不是文本文件，我不读二进制）"
     try:
@@ -127,6 +136,8 @@ def search(text: str, limit: int = MAX_HITS) -> str:
         if any(part in SKIP_DIRS for part in p.parts):
             continue
         if not p.is_file() or p.suffix.lower() not in TEXT_EXT:
+            continue
+        if _denied(p):
             continue
         try:
             if p.stat().st_size > MAX_BYTES:
