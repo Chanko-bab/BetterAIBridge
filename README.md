@@ -283,15 +283,15 @@ checksums.json         每个文件的 sha256
 **验证**：40720（开发）与 40721（D:\BAB测试）都占着时，装 0.1.5 到新目录得到 core: 40722 / asr: 40716，start-core.cmd 里 set BAB_PORT=40722；用该目录起内核后 /health = port:40722，instance.json 一致。
 ## 0.1.6：情绪用百分比 + 安装器收尾（2026-10-29 23:5x）
 
-**情绪**：\pp/ui/pages/details.py\ 每条情绪标签从「几乎没有/有一点/明显/很强/到顶了」改为 \"{int(round(v * 100))}%"\；「现在最明显」那行也改百分比；颜色仍按 BANDS 分档。卡片标题改「情绪（12 种 · 实时强度）」。实测（offscreen + 假数据）：\joy 52% / calm 44% / confusion 86%\，摘要「现在最明显：困惑（86%）、快乐（52%）、平静（44%）」。
+**情绪**：`app/ui/pages/details.py` 每条情绪标签从「几乎没有/有一点/明显/很强/到顶了」改为 `"{int(round(v * 100))}%"`；「现在最明显」那行也改百分比；颜色仍按 BANDS 分档。卡片标题改「情绪（12 种 · 实时强度）」。实测（offscreen + 假数据）：`joy 52% / calm 44% / confusion 86%`，摘要「现在最明显：困惑（86%）、快乐（52%）、平静（44%）」。
 
 **安装包**：
-- \uild.ps1\ 的占位 llm.json/persona.md 改为**从 UTF-8 模板文件复制**（\entity/config/llm.placeholder.json\、\entity/persona/persona.placeholder.md\），解决「PS 5.1 把无 BOM UTF-8 的构建脚本按 ANSI 读 → 占位文本双重乱码」；模板文件本身不进安装包。
-- \uild.ps1\ 现在纯 ASCII（只剩一行中文注释也改成英文），避免同类解析问题。
-- 0.1.6 产物：\D:\BAB-release\BetterAIBridge-Setup-0.1.6.exe\ 376,832 B，sha256 \eba2fa9…098d\，payload 99 文件。
-- 静默装到新目录验证：\VERSION.txt\=0.1.6、占位 llm.json 的中文正常、无 \*.placeholder.*\ 残留、\core: 40721 / asr: 40716\（40720 被开发内核占用时自动避让）、百分比代码已随包。
+- `build.ps1` 的占位 llm.json/persona.md 改为**从 UTF-8 模板文件复制**（`entity/config/llm.placeholder.json`、`entity/persona/persona.placeholder.md`），解决「PS 5.1 把无 BOM UTF-8 的构建脚本按 ANSI 读 → 占位文本双重乱码」；模板文件本身不进安装包。
+- `build.ps1` 现在纯 ASCII（只剩一行中文注释也改成英文），避免同类解析问题。
+- 0.1.6 产物：`D:\BAB-release\BetterAIBridge-Setup-0.1.6.exe` 376,832 B，sha256 `ceba2fa9…098d`，payload 99 文件。
+- 静默装到新目录验证：`VERSION.txt`=0.1.6、占位 llm.json 的中文正常、无 `*.placeholder.*` 残留、`core: 40721 / asr: 40716`（40720 被开发内核占用时自动避让）、百分比代码已随包。
 
-**清理**：\D:\BAB测试\（0.1.4 解包产物，609.8 MB / 12,551 文件）已删；删前把它的 persona/config/memory/state 备份到 \D:\存档\BAB测试-data-20261029-2325\（10 文件 / 15.8 KB）。
+**清理**：`D:\BAB测试`（0.1.4 解包产物，609.8 MB / 12,551 文件）已删；删前把它的 persona/config/memory/state 备份到 `D:\存档\BAB测试-data-20261029-2325`（10 文件 / 15.8 KB）。
 ## 0.1.9：最小化后找不回来（2026-10-30）
 
 现象：安装器点最小化以后，点任务栏那个位置没反应，窗口回不来。
