@@ -131,10 +131,13 @@ def poll() -> dict:
 
 def fragment() -> str:
     p = poll()
-    lines = [TEXT[d["name"]] for d in p.get("active", [])[:2] if d["name"] in TEXT]
-    if not lines:
+    strong = [d for d in p.get("active", [])
+              if d["name"] in TEXT and float(d.get("urgency") or 0.0) >= 0.6]
+    if not strong:
         return ""
-    return "# 你现在想干什么（别念出来，让它影响你的语气和取舍）\n" + "\n".join("- " + x for x in lines)
+    d = strong[0]
+    return ("# 你现在想干什么（别念出来，让它影响你的语气和取舍）\n"
+            + "- " + TEXT[d["name"]])
 
 def mark_fired(name: str) -> None:
     st = _load()

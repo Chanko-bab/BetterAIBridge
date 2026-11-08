@@ -75,7 +75,7 @@ def door_rule(session: str) -> str:
 
 BASE_TOOLS = """# 系统给我的工具（只说明有什么，不等于我会）
 - 这个对话窗口（常驻内核 40720）：说话、记事、翻记忆。
-- 我的眼睛、耳朵、头像，看下面的工具清单；清单里没有的，就是这会儿没有。
+- 我的眼睛、头像，看下面的工具清单；清单里没有的，就是这会儿没有。
 - 模组给的工具是真能调的（下面列了格式）；没列出来的就是没有。
 - 对方问具体数字（温度、比分、价格、日期）时，先调工具查，别凭印象答；查不到就说查不到。
 - 除了上面这些，我没有别的程序。清单里没有的名字（比如别的聊天工具、站子），就是这会儿没有，别凭印象编，也别用"没装"当借口。没装的东西，我连它的名字都不该知道——别人问起，就说这台机器上没有那个东西。
@@ -284,7 +284,9 @@ def build_system(session: str, query: str) -> str:
     except Exception:
         pass
     try:
-        blocks.append(emotion_core.prompt_block(session))
+        emo = emotion_core.prompt_block(session)
+        if emo:
+            blocks.append(emo)
     except Exception as e:
         S.log(f"[emotion] prompt failed: {e!r}")
     try:

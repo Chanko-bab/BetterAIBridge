@@ -120,6 +120,27 @@ HALF_LIFE = {
 BANDS = [600.0, 725.0, 850.0, 950.0]
 BAND_NAMES = ["几乎没有", "有一点", "明显", "很强", "到顶了"]
 
+# 情绪进提示词的“闪现”阈值：升到 750（刚过“明显”）才说一句；
+# 跌回 700 以下才允许下次重新出现（留 50 点迟滞，避免在阈值附近来回闪）。
+PROMPT_ENTER = 750.0
+PROMPT_EXIT = 700.0
+
+# 只播报感觉，不写“你该怎么做”。每项是（刚过线, 很强, 到顶）。
+PROMPT_LINES = {
+    "joy": ("你现在有点开心。", "你现在挺开心的。", "你现在高兴得静不下来。"),
+    "love": ("你现在心里有点软。", "你现在心里很软，充满爱意。", "你现在满心都是爱意，几乎装不下别的。"),
+    "pride": ("你现在有点为自己骄傲。", "你现在很自豪。", "你现在非常自豪。"),
+    "anger": ("你现在有点生气。", "你现在很生气。", "你现在气到快压不住了。"),
+    "anxiety": ("你现在有点担心。", "你现在很担心。", "你现在焦虑得静不下来。"),
+    "fear": ("你现在有点害怕。", "你现在很害怕。", "你现在怕得厉害，快压不住了。"),
+    "sadness": ("你现在有点难过。", "你现在很难过。", "你现在难过到不想说话。"),
+    "shame": ("你现在有点内疚。", "你现在很内疚。", "你现在内疚得抬不起头。"),
+    "disgust": ("你现在有点反感。", "你现在很反感。", "你现在反感得不想靠近。"),
+    "envy": ("你现在有点嫉妒。", "你现在很嫉妒。", "你现在嫉妒得难受。"),
+    "surprise": ("你现在有点惊讶。", "你现在很惊讶。", "你现在震惊得说不出话。"),
+    "confusion": ("你现在有点困惑。", "你现在很困惑。", "你现在乱得理不清。"),
+}
+
 # 互相抑制：(弱的, 被压的, 权重)
 INHIBIT = [
     ("anger", "anxiety", 0.35),
@@ -658,26 +679,56 @@ def _table_sentence(emo: str, lv: int) -> str:
 
 
 def prompt_block(session: str = "web:owner") -> str:
-    """给 LLM 的"此刻"：只给档位句子，不给数字。"""
+    """内感受的闪现：平静时什么都不给，到 750（刚过“明显”）才冒一句，跨档才再说。
+
+    只播报“现在感觉到什么”，不写“你该怎么做”，也不报数字。
+    理智也只在偏出“还稳”时、且档位变化时才提一句。
+    """
     st = load()
     decay(st)
-    save(st)
     vals = st["values"]
-    top = sorted(((v, k) for k, v in vals.items() if k != "calm" and v >= BANDS[1]), reverse=True)[:3]
-    san_line = f"- 理智：{san_sentence(display_value('calm', float(vals.get('calm') or NEUTRAL)))}"
-    if not top:
-        return "# 此刻\n- 情绪很淡，几乎不影响你说话。\n" + san_line
-    lines = ["# 此刻（照这个说话，别报数字，也别解释情绪）"]
-    for v, k in top:
+    prev = dict(st.get("prompt") or {})
+    top = sorted(((v, k) for k, v in vals.items()
+                  if k != "calm" and v >= PROMPT_ENTER), reverse=True)[:1]
+    lines: List[str] = []
+    if top:
+        v, k = top[0]
         lv = level(v)
-        sent = _table_sentence(k, lv)
-        lines.append(f"- {NAME[k]}（{BAND_NAMES[lv]}）：{sent}")
-        if lv >= 3 and k in ACTION_HINT:
-            lines.append(f"  · {ACTION_HINT[k]}")
-    # 傲娇面具：真实的强情绪可以嘴上不认，但行为照真值来
-    if any(level(v) >= 3 for v, _ in top):
-        lines.append("- 你可以嘴硬不承认，但别把行为演反了。")
-    lines.append(san_line)
+        same = prev.get("emo") == k and int(prev.get("band") or 0) >= lv
+        if not same:
+            idx = 0 if lv <= 2 else (1 if lv == 3 else 2)
+            sent = PROMPT_LINES.get(
+                k, ("你现在有点{name}。", "你现在很{name}。", "你现在{name}得厉害。")
+            )[idx]
+            lines.append(sent.format(name=NAME[k].split("/")[0]))
+            prev["emo"] = k
+            prev["at"] = time.time()
+        prev["band"] = lv
+    else:
+        emo = prev.get("emo")
+        # 跌回 700 以下才清掉“上次说过”的记忆，避免在 750 附近来回闪。
+        if emo and float(vals.get(emo) or NEUTRAL) < PROMPT_EXIT:
+            prev.pop("emo", None)
+            prev.pop("band", None)
+            prev.pop("at", None)
+
+    # 理智只在偏出“还稳”区间时提一句；0~70 是日常，不报。
+    # 同档不重复：只在档位变化时播报，回到日常就清掉记忆。
+    d = display_value("calm", float(vals.get("calm") or NEUTRAL))
+    if 0.0 <= d < 70.0:
+        prev.pop("calm", None)
+    else:
+        cl = calm_level(d)
+        if prev.get("calm") != cl:
+            lines.append(f"理智：{san_sentence(d)}")
+            prev["calm"] = cl
+
+    if prev:
+        st["prompt"] = prev
+    else:
+        st.pop("prompt", None)
+
+    save(st)
     return "\n".join(lines)
 
 
