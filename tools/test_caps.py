@@ -275,9 +275,129 @@ def asr_service_tests() -> None:
             proc.kill()
 
 
+def module_status_tests() -> None:
+    """她要看模组状况时，拿到的是一张真表，不是一句“都挺好”。"""
+    from entity.core import modules_box, tool_bus
+
+    check("tool:module-status-listed", "module_status" in tool_bus.tools())
+    orig = modules_box.modules
+    modules_box.modules = lambda: [{
+        "id": "m1", "name": "测试", "state": "enabled", "last_health": "fail",
+        "last_error": "端口 40733 连不上", "runtime_port": 40733, "pid": 123,
+    }]
+    try:
+        res = asyncio.run(tool_bus._call_impl("module_status", {}))
+    finally:
+        modules_box.modules = orig
+    rows = ((res or {}).get("result") or {}).get("modules") or []
+    check("tool:module-status-call", len(rows) == 1 and rows[0]["health"] == "fail", str(res)[:160])
+
+
+def grants_tests() -> None:
+    """改桥白名单是写操作：没启动器 token 必须 401，只读 manifest 仍可看。"""
+    try:
+        from fastapi.testclient import TestClient
+        from entity.core.app import app as core_app
+    except Exception as exc:  # noqa: BLE001
+        check("grants:import", False, repr(exc))
+        return
+    cli = TestClient(core_app)
+    r = cli.post("/bridge/grants", json={"module": "m1", "cap": "chat.say", "allow": False})
+    check("grants:no-token-401", r.status_code == 401, f"{r.status_code} {r.text[:80]}")
+    r2 = cli.get("/health")
+    check("grants:health-open", r2.status_code == 200, str(r2.status_code))
+
+
+def b_round_tests() -> None:
+    """B 轮新口：播放/停止/朗读/通知/耳目状态，参数边界要挡住。"""
+    from fastapi import HTTPException
+    from entity.core import bridge as B
+    from entity.core import settings as S
+
+    for cap in ("audio.play", "audio.stop", "tts.speak", "ui.notify", "sense.status"):
+        check(f"b:cap-{cap}", cap in B.CAPS)
+
+    outside = "C:/Windows/win.ini"
+    try:
+        B._install_media(outside)
+        check("b:audio-outside", False)
+    except HTTPException as exc:
+        check("b:audio-outside", exc.status_code == 400, str(exc.detail)[:60])
+
+    media = S.APP_ROOT / "WiseEntity" / "entity" / "state" / "_cap_audio.wav"
+    media.parent.mkdir(parents=True, exist_ok=True)
+    media.write_bytes(b"RIFF")
+    seen = {}
+    orig_post = B._sense_post
+
+    def fake_post(path, payload, timeout=120.0):
+        seen["path"], seen["payload"] = path, payload
+        return {"ok": True}
+
+    B._sense_post = fake_post
+    try:
+        got = B._audio_play("m1", path=str(media))
+        check("b:audio-play", got.get("ok") is True and seen["payload"]["path"].endswith(".wav"))
+        check("b:audio-stop", B._audio_stop("m1").get("ok") is True and seen["path"] == "/audio/stop")
+        check("b:sense-status", B._sense_status("m1").get("ok") is True
+              and seen["path"] == "/sense/status")
+        orig_tts = B._voice_tts
+        B._voice_tts = lambda *a, **k: {"path": str(media), "mime": "audio/wav", "chars": 2,
+                                        "duration_s": 1.0, "cached": False}
+        try:
+            tts = B._tts_speak("m1", text="你好")
+            check("b:tts-speak", tts.get("played") is True and seen["path"] == "/audio/play")
+        finally:
+            B._voice_tts = orig_tts
+        check("b:ui-notify", B._ui_notify("m1", text="测试", level="warn").get("ok") is True
+              and seen["payload"]["level"] == "warn")
+        for bad in ("", "x" * 241):
+            try:
+                B._ui_notify("m1", text=bad)
+                check("b:ui-notify-limit", False, repr(bad[:20]))
+                break
+            except HTTPException as exc:
+                check("b:ui-notify-limit", exc.status_code == 400, str(exc.detail)[:40])
+    finally:
+        B._sense_post = orig_post
+        try:
+            media.unlink()
+        except OSError:
+            pass
+
+
+def voice_events_tests() -> None:
+    """口型三件事：事件类型已登记，外壳能带 token 上报，乱 phase 400。"""
+    from entity.core import bridge as B
+    for kind in ("voice.play.started", "voice.level", "voice.play.ended"):
+        check(f"vlevel:kind-{kind}", kind in B.EVENT_KINDS)
+    try:
+        from fastapi.testclient import TestClient
+        from entity.core import auth
+        from entity.core.app import app as core_app
+    except Exception as exc:  # noqa: BLE001
+        check("vlevel:import", False, repr(exc))
+        return
+    cli = TestClient(core_app)
+    h = {"x-bab-core-token": auth.token()}
+    r = cli.post("/voice/playback", json={"phase": "started", "data": {"id": "t1"}}, headers=h)
+    check("vlevel:started", r.status_code == 200, f"{r.status_code} {r.text[:80]}")
+    r = cli.post("/voice/playback", json={"phase": "level", "data": {"id": "t1", "frames": []}},
+                 headers=h)
+    check("vlevel:level", r.status_code == 200, f"{r.status_code} {r.text[:80]}")
+    r = cli.post("/voice/playback", json={"phase": "bogus", "data": {}}, headers=h)
+    check("vlevel:bad-phase", r.status_code == 400, str(r.status_code))
+    r = cli.post("/voice/playback", json={"phase": "started", "data": {}})
+    check("vlevel:no-token-401", r.status_code == 401, str(r.status_code))
+
+
 def main() -> int:
     memory_tests()
     caps_tests()
+    module_status_tests()
+    grants_tests()
+    b_round_tests()
+    voice_events_tests()
     asr_service_tests()
     print("PASS %d" % len(PASS))
     if FAIL:

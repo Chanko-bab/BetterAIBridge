@@ -13,7 +13,7 @@ from WiseEntity.entity.core import self_trials as T  # noqa: E402
 def test_levels():
     assert T.level_of("avatar_see") == "L0"
     assert T.level_of("look_around") == "L1"
-    assert T.level_of("listen_now") == "L1"
+    assert T.level_of("listen_now") == "L2"
     assert T.level_of("fs.mkdir") == "L2"
 
 

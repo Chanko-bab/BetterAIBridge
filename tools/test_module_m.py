@@ -4,7 +4,7 @@ r"""模组框架 M 的契约自检（非 pytest，退出码 0/1）。
     D:\BetterAIBridge\.venv\Scripts\python.exe tools\test_module_m.py
     D:\BetterAIBridge\.venv\Scripts\python.exe tools\test_module_m.py --smoke
 
-查什么：清单能不能过 `pbab.validate`、二十三个工具和端点对不对得上、桥的申请单
+查什么：清单能不能过 `pbab.validate`、二十七个工具和端点对不对得上、桥的申请单
 是不是逐条列清、`developing.md` 是否讲清了模组怎么开发、start.cmd 是不是纯 ASCII+CRLF
 且读 BAB_MODULE_PORT、包里有没有混进 __pycache__。`--smoke` 会真起一次服务，打 /health 和 /self。
 
@@ -36,9 +36,12 @@ else:
     SRC = _new if _new.is_dir() else Path(r"D:\Program for BAB\program_M.pbab")
 
 # 桥现在给的能力（和 WiseEntity/entity/core/bridge.py 的 CAPS 对齐）；"*" = 全部
-KNOWN_CAPS = {"chat.say", "memory.search", "memory.note", "brain.snapshot", "mood.read", "presence.read", "notice.push", "voice.tts", "voice.asr", "vision.describe", "avatar.get", "sense.devices", "sense.look", "sense.listen", "ui.background.get", "ui.background.set", "ui.mouse.get", "fs.mkdir", "config.write", "persona.style.get", "persona.face.get", "*"}
+KNOWN_CAPS = {"chat.say", "memory.search", "memory.note", "brain.snapshot", "mood.read", "presence.read", "notice.push", "voice.tts", "voice.asr", "voice.message", "vision.describe", "avatar.get", "sense.devices", "sense.look", "sense.status", "audio.play", "audio.stop", "tts.speak", "ui.notify", "ui.background.get", "ui.background.set", "ui.mouse.get", "fs.mkdir", "config.write", "persona.style.get", "persona.face.get", "*"}
 
-EXPECTED_TOOLS = 23
+# 0.6.5 起「后台偷听」收掉了；M 0.4.0 会改用 voice.message，0.3.x 的清单先容忍
+LEGACY_CAPS = {"sense.listen"}
+
+EXPECTED_TOOLS = 27
 EXPECTED_CAPS = KNOWN_CAPS - {"*"}
 
 FAILS: list[str] = []
@@ -252,10 +255,14 @@ def main() -> int:
     wants = [str(x) for x in ((man.get("bridge") or {}).get("wants") or [])]
     check(bool(wants), "bridge.wants 是空的，装了也碰不到东西")
     check("*" not in wants, 'M 自己要用逐条清单，别用 ["*"]（看的人不知道它到底用了什么）')
-    unknown = [w for w in wants if w not in KNOWN_CAPS]
+    unknown = [w for w in wants if w not in KNOWN_CAPS and w not in LEGACY_CAPS]
     check(not unknown, f"申请了不存在的 cap：{unknown}")
-    check(set(wants) == EXPECTED_CAPS,
-          f"要逐条申请全部能力（缺 {sorted(EXPECTED_CAPS - set(wants))}，多 {sorted(set(wants) - EXPECTED_CAPS)}）")
+    expected = set(EXPECTED_CAPS)
+    if LEGACY_CAPS & set(wants):
+        # 0.3.x 的清单：还写着 sense.listen，没有 voice.message
+        expected = (expected - {"voice.message"}) | LEGACY_CAPS
+    check(set(wants) == expected,
+          f"要逐条申请全部能力（缺 {sorted(expected - set(wants))}，多 {sorted(set(wants) - expected)}）")
 
     # 工具 ↔ 端点
     provides = conn.get("provides") or {}
@@ -355,7 +362,7 @@ def main() -> int:
             print("  -", f)
         print(f"\n{OKS} ok, {len(FAILS)} fail")
         return 1
-    print(f"PASS {OKS} 条：清单、桥申请单、二十三个工具↔端点、开发说明、启动脚本、无垃圾文件都对。")
+    print(f"PASS {OKS} 条：清单、桥申请单、二十七个工具↔端点、开发说明、启动脚本、无垃圾文件都对。")
     return 0
 
 

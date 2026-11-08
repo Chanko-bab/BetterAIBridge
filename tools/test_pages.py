@@ -1089,15 +1089,16 @@ def main() -> int:
               "设置页应有「打开日志目录」「再看教程」")
         check(hasattr(sp2, "btn_import") and sp2.btn_import.text() == "导入存档",
               "设置页应有「导入存档」")
-        check(hasattr(sp2, "cb_eyes") and hasattr(sp2, "cb_ears")
-              and hasattr(sp2, "cb_cam") and hasattr(sp2, "cb_mic")
-              and hasattr(sp2, "lbl_sense"),
-              "设置页应有耳目卡：两个开关 + 摄像头/麦克风下拉")
-        check(hasattr(sp2, "sp_watch_sec") and hasattr(sp2, "sp_listen_sec")
-              and hasattr(sp2, "sp_listen_len")
-              and sp2.sp_watch_sec.minimum() == 30
-              and sp2.sp_listen_sec.minimum() == 60,
-              "耳目卡应有可改的看/听间隔与听时长")
+        check(hasattr(sp2, "cb_eyes") and hasattr(sp2, "cb_cam")
+              and hasattr(sp2, "cb_mic") and hasattr(sp2, "lbl_sense"),
+              "设置页应有眼睛卡：开关 + 摄像头下拉")
+        check(hasattr(sp2, "sp_watch_sec") and sp2.sp_watch_sec.minimum() == 30,
+              "眼睛卡应有可改的看间隔")
+        check(not hasattr(sp2, "cb_ears") and not hasattr(sp2, "sp_listen_sec"),
+              "耳朵开关与听间隔已移除")
+        check(hasattr(sp2, "cb_keep_voice") and hasattr(sp2, "btn_clear_voice")
+              and hasattr(sp2, "lbl_vmsg"),
+              "语音消息卡应有保留默认开关与清除按钮")
 
         sent_voice: list[dict] = []
         orig_tts_cfg = cc.CoreClient.tts_config

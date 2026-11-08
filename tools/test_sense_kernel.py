@@ -38,11 +38,11 @@ def main() -> int:
     from entity.core import app as core_app
     from entity.core import bridge
 
-    for cap in ("sense.look", "sense.listen", "sense.devices"):
+    for cap in ("sense.look", "sense.devices", "voice.message"):
         one = bridge.CAPS.get(cap) or {}
         check(bool(one.get("desc")) and callable(one.get("fn")), f"能力清单里有 {cap}")
     check("question" in (bridge.CAPS["sense.look"]["args"] or {}), "sense.look 带 question 参数")
-    check("seconds" in (bridge.CAPS["sense.listen"]["args"] or {}), "sense.listen 带 seconds 参数")
+    check("sense.listen" not in bridge.CAPS, "sense.listen 已从能力清单移除")
 
     for cap in ("ui.background.get", "ui.background.set", "ui.mouse.get",
                 "fs.mkdir", "config.write"):
@@ -137,11 +137,6 @@ def main() -> int:
             check(got["headers"].get("X-Sense-Token") == "tok-1", "带上令牌")
             check(got["json"].get("question") == "画面里有什么", "问题带过去")
 
-            bridge._sense_listen("m1", seconds=999)
-            check(abs(float(got["json"].get("seconds")) - 20.0) < 0.01, "listen 秒数上限 20")
-            bridge._sense_listen("m1", seconds=0)
-            check(abs(float(got["json"].get("seconds")) - 1.0) < 0.01, "listen 秒数下限 1")
-
             bridge._sense_devices("m1")
             check(got["url"].endswith("/devices"), "devices 也走小门")
         finally:
@@ -157,7 +152,7 @@ def main() -> int:
     finally:
         bridge._voice_asr = old_asr  # type: ignore[assignment]
 
-    # --- 她知道不知道自己有眼睛耳朵 -------------------------------------
+    # --- 她知道不知道自己有眼睛 -----------------------------------------
     import asyncio
 
     from entity.core import llm_box, sense, tool_bus
@@ -166,57 +161,54 @@ def main() -> int:
     old_scfg = sense.CFG_PATH
     sense.CFG_PATH = tmp2 / "sense.json"
     try:
-        sense.CFG_PATH.write_text(json.dumps({"eyes": False, "ears": False}),
+        sense.CFG_PATH.write_text(json.dumps({"eyes": False}),
                                   encoding="utf-8")
         frag = sense.fragment()
-        check("关着" in frag, "没开耳目：提示词直说看不见听不见")
+        check("关着" in frag, "没开眼睛：提示词直说看不见")
+        check("耳朵" not in frag, "耳朵已从提示词收掉")
         tool_bus._cache["at"] = 0.0
         names = tool_bus.tools()
         check("look_around" not in names and "listen_now" not in names,
-              "没开耳目：工具列表里不出现看/听")
+              "没开眼睛：工具列表里不出现看/听")
 
         sense.CFG_PATH.write_text(json.dumps({
-            "eyes": True, "ears": True, "camera": "Integrated Camera",
+            "eyes": True, "camera": "Integrated Camera",
             "mic": "1", "port": 45678, "token": "tok-2",
         }), encoding="utf-8")
         frag = sense.fragment()
         check("Integrated Camera" in frag and "look_around" in frag,
               "开了眼睛：提示词写上摄像头名与 look_around")
-        check("麦克风" in frag and "listen_now" in frag,
-              "开了耳朵：提示词写上麦克风与 listen_now")
+        check("麦克风" not in frag and "listen_now" not in frag,
+              "耳朵收掉后提示词不再提麦克风/listen_now")
         tool_bus._cache["at"] = 0.0
         names = tool_bus.tools()
-        check("look_around" in names and "listen_now" in names,
-              "开了耳目：工具列表里出现 look_around / listen_now")
+        check("look_around" in names and "listen_now" not in names,
+              "开了眼睛：工具列表里只有 look_around")
 
         try:
             sys_txt = llm_box.build_system("web:owner", "")
-            check("你的眼睛和耳朵" in sys_txt, "系统提示词里带上耳目那段")
+            check("你的眼睛" in sys_txt, "系统提示词里带上眼睛那段")
+            check("耳朵" not in sys_txt, "系统提示词不再提耳朵")
         except Exception as e:  # noqa: BLE001
             check(False, f"拼系统提示词失败：{type(e).__name__}: {e}")
 
-        old_look, old_listen = sense.look, sense.listen
+        old_look = sense.look
         sense.look = lambda q="": {"ok": True, "source": "camera", "text": f"看到猫（{q}）"}
-        sense.listen = lambda s=6.0: {"ok": True, "text": f"听到一句话（{s}秒）"}
         try:
             r = asyncio.run(tool_bus.call("look_around", {"question": "猫"}))
             res = r.get("result") or {}
             check(r.get("ok") is True and "看到猫" in str(res.get("text")),
                   f"look_around 把画面描述带回来（{r}）")
-            r = asyncio.run(tool_bus.call("listen_now", {"seconds": 3}))
-            res = r.get("result") or {}
-            check(r.get("ok") is True and "3" in str(res.get("text")),
-                  f"listen_now 把转写带回来（{r}）")
 
             def boom(q=""):
-                raise RuntimeError("耳目没开：主人还没允许你看/听")
+                raise RuntimeError("耳目没开：主人还没允许你看")
 
             sense.look = boom
             r = asyncio.run(tool_bus.call("look_around", {}))
             check(r.get("ok") is False and "耳目没开" in str(r.get("error")),
                   f"看不了时把原因说给她（{r}）")
         finally:
-            sense.look, sense.listen = old_look, old_listen
+            sense.look = old_look
     finally:
         sense.CFG_PATH = old_scfg
         tool_bus._cache["at"] = 0.0

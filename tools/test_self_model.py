@@ -20,21 +20,19 @@ def check(ok: bool, msg: str) -> None:
 
 def main() -> int:
     S = self_model.S
-    orig = (S.entity_name, self_model.sense.eyes, self_model.sense.ears,
-            self_model.sense.watch, self_model.sense.listen_always,
+    orig = (S.entity_name, self_model.sense.eyes,
+            self_model.sense.watch,
             self_model.modules_box.enabled, self_model.tool_bus.tools)
     try:
         S.entity_name = lambda: "小雨"
         self_model.sense.eyes = lambda: False
-        self_model.sense.ears = lambda: False
         self_model.sense.watch = lambda: False
-        self_model.sense.listen_always = lambda: False
         self_model.modules_box.enabled = lambda: []
         self_model.tool_bus.tools = lambda: {}
         txt = self_model.fragment()
         check("我此刻的自我认知" in txt, "有自画像标题")
         check("我是「小雨」" in txt, "用第一人称说名字")
-        check("没有眼睛，也没有耳朵" in txt, "耳目关闭时照实说")
+        check("没有眼睛" in txt, "眼睛关闭时照实说")
         check("没有给我任何可调用的工具" in txt, "没工具时照实说")
         check("读不了任意文件" in txt, "边界写清楚")
         check("用户" not in txt and "你的" not in txt, "没有向外的代称")
@@ -54,8 +52,8 @@ def main() -> int:
         check("系统给了我 2 个可调用的工具" in txt, "工具数量准确")
         check("没有装任何外挂" not in txt, "有模组时不写没装")
     finally:
-        (S.entity_name, self_model.sense.eyes, self_model.sense.ears,
-         self_model.sense.watch, self_model.sense.listen_always,
+        (S.entity_name, self_model.sense.eyes,
+         self_model.sense.watch,
          self_model.modules_box.enabled, self_model.tool_bus.tools) = orig
     print("\nPASS" if not fails else f"\n{len(fails)} 条失败")
     return 1 if fails else 0

@@ -32,7 +32,8 @@ def main() -> int:
     sense.CFG_PATH = tmp / "sense.json"
 
     c = sense.cfg()
-    check(c["eyes"] is False and c["ears"] is False, "默认两只眼耳都关着")
+    check(c["eyes"] is False, "默认眼睛关着")
+    check("ears" not in c, "耳朵已经从配置里拿掉")
     check(c["announce"] is True, "默认看/听前会说一声")
     check(c["port"] == 0 and c["token"] == "", "端口/令牌默认空")
 
@@ -76,12 +77,7 @@ def main() -> int:
         seen["look_q"] = question
         return {"ok": True, "text": "看到一张测试图", "source": "screen"}
 
-    def fake_listen(seconds: float = 6.0) -> dict:
-        seen["listen_s"] = seconds
-        return {"ok": True, "text": "听到一句测试话", "seconds": 3.0}
-
     sense.look = fake_look  # type: ignore[assignment]
-    sense.listen = fake_listen  # type: ignore[assignment]
     info = sense_server.start()
     check(info["ok"] and info["port"] > 0, f"小门起来了（端口 {info['port']}）")
     port = info["port"]
@@ -99,8 +95,7 @@ def main() -> int:
             check(seen.get("look_q") == "这是什么", "/look 把问题带过去")
             r = cli.post(base + "/listen", json={"seconds": 4.5},
                          headers={"X-Sense-Token": token})
-            check(r.status_code == 200 and r.json()["text"] == "听到一句测试话", "/listen 回文字")
-            check(abs(float(seen.get("listen_s", 0)) - 4.5) < 0.01, "/listen 把秒数带过去")
+            check(r.status_code == 410, "/listen 已收掉 -> 410")
             check(cli.post(base + "/nope", json={},
                            headers={"X-Sense-Token": token}).status_code == 404, "没这个路口 -> 404")
 
@@ -143,6 +138,60 @@ def main() -> int:
                 r = cli.post(base + "/fs/mkdir", json={"path": "C:/Windows/evil-bab-test"},
                              headers={"X-Sense-Token": token})
                 check(r.status_code == 500, "/fs/mkdir 不许出安装目录")
+
+                # B 轮：播放/停止/通知/耳目状态
+                from app.services import audio as aud
+
+                class _FakePlayer:
+                    def __init__(self) -> None:
+                        self.playing_path = ""
+                        self.last_error = ""
+                        self.played = []
+                        self.stopped = 0
+
+                    def play(self, p) -> bool:
+                        self.played.append(str(p))
+                        self.playing_path = str(p)
+                        return True
+
+                    def stop(self) -> None:
+                        self.stopped += 1
+                        self.playing_path = ""
+
+                old_player = aud.player
+                fake = _FakePlayer()
+                aud.player = fake  # type: ignore[assignment]
+                wav = Path(cfgmod.APP_DIR) / f"bridge-audio-test-{tmp.name[-6:]}.wav"
+                wav.write_bytes(b"RIFF")
+                try:
+                    r = cli.post(base + "/audio/play", json={"path": str(wav)},
+                                 headers={"X-Sense-Token": token})
+                    check(r.status_code == 200 and r.json().get("playing") is True
+                          and fake.played == [str(wav)], "/audio/play 放得动")
+                    r = cli.post(base + "/audio/play", json={"path": "C:/Windows/win.ini"},
+                                 headers={"X-Sense-Token": token})
+                    check(r.status_code == 500, "/audio/play 不许出安装目录")
+                    r = cli.post(base + "/audio/stop", json={},
+                                 headers={"X-Sense-Token": token})
+                    check(r.status_code == 200 and fake.stopped == 1, "/audio/stop 停得掉")
+                finally:
+                    aud.player = old_player  # type: ignore[assignment]
+                    try:
+                        wav.unlink()
+                    except OSError:
+                        pass
+
+                sense_server.drain_notices()
+                r = cli.post(base + "/ui/notify",
+                             json={"text": "模组提醒", "title": "测试", "level": "warn"},
+                             headers={"X-Sense-Token": token})
+                got = sense_server.drain_notices()
+                check(r.status_code == 200 and len(got) == 1
+                      and got[0]["level"] == "warn", "/ui/notify 排队给主线程")
+                r = cli.post(base + "/sense/status", json={},
+                             headers={"X-Sense-Token": token})
+                check(r.status_code == 200 and "eyes" in r.json()
+                      and "watch_sec" in r.json(), "/sense/status 回耳目状态")
 
                 r = cli.post(base + "/config/set", json={"key": "ui.window_size",
                                                         "value": [1200, 800]},

@@ -16,7 +16,10 @@ APP = ROOT / "app"
 MAIN = ROOT / "main.py"
 
 # 2026-11-07 审计基线。修掉一处就调低；新增宽泛捕获必须说明原因并抬线。
-BASELINE_BROAD = 247
+# 2026-11-08：语音消息新增录音设备启停/清理（winmm 调用没有稳定的异常类型）
+# 与 Qt 槽兜底，宽泛捕获 247 → 261；静默/只 pass 仍保持 0。
+# 2026-11-08：朗读口型的送事件线程兜底（钩子可能来自内核 HTTP，异常类型不稳定），261 → 262。
+BASELINE_BROAD = 262
 BASELINE_SILENT = 0
 BASELINE_PASS = 0
 
