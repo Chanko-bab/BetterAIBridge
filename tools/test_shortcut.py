@@ -32,7 +32,18 @@ def main() -> None:
         shortcut.desktop_dir = lambda: desk  # type: ignore[assignment]
         check(shortcut.migrate_old_shortcut() is False, "没有旧入口时无事可做")
 
-    print("test_shortcut: 5 checks passed")
+    # 安装脚本的两条硬约束（2026-11-08 实测踩过）：
+    # 1) 静默/测试安装可用 BAB_TEST_SHORTCUT 建稳定入口；
+    # 2) 覆盖安装时目录必须合并，不能套娃成 app\app。
+    inst = (Path(__file__).resolve().parents[1] / "packaging" / "install.ps1").read_text(
+        encoding="utf-8-sig")
+    check("BAB_TEST_SHORTCUT" in inst, "静默安装应支持建稳定入口")
+    check("Copy-Except $item.FullName (Join-Path $Dst $item.Name) @() 0" in inst,
+          "覆盖安装时目录应合并复制")
+    check("-Destination (Join-Path $Dst $item.Name) -Recurse -Force" not in inst,
+          "不能再把目录套娃复制")
+
+    print("test_shortcut: 8 checks passed")
 
 
 if __name__ == "__main__":

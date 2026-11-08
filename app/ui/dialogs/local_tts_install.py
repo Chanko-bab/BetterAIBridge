@@ -2,30 +2,18 @@
 
 第一次装要拉独立 venv + torch + 约 760MB 模型，几分钟到十几分钟；进度只做参考，
 不承诺网速。装完顺手把服务拉起来，失败给出日志末尾。
+
+真正的安装跑在进程级 `local_tts_job.job` 里，不挂在这个窗口上：点「关闭」或
+「后台继续」只是不再看进度，下载、pip、启动服务都继续；下次打开窗口还能接上。
 """
 from __future__ import annotations
 
-from PySide6.QtCore import QThread, Signal, Qt
 from PySide6.QtWidgets import (
     QDialog, QHBoxLayout, QLabel, QProgressBar, QPushButton, QTextEdit, QVBoxLayout,
 )
 
 from ...core import local_tts
-
-
-class _Worker(QThread):
-    progress = Signal(int, str)
-    done = Signal(dict)
-    failed = Signal(str)
-
-    def run(self) -> None:  # noqa: D401
-        try:
-            doc = local_tts.install(lambda p, m: self.progress.emit(int(p), str(m)))
-            self.progress.emit(97, "启动本地语音服务…")
-            local_tts.start()
-            self.done.emit(doc)
-        except Exception as exc:  # noqa: BLE001
-            self.failed.emit(str(exc).strip() or type(exc).__name__)
+from ...services.local_tts_job import job
 
 
 class LocalTtsInstallDialog(QDialog):
@@ -34,7 +22,6 @@ class LocalTtsInstallDialog(QDialog):
         self.setWindowTitle("下载本地语音包")
         self.setModal(True)
         self.resize(580, 430)
-        self._worker: _Worker | None = None
         self.ok = False
 
         lay = QVBoxLayout(self)
@@ -44,8 +31,8 @@ class LocalTtsInstallDialog(QDialog):
         lay.addWidget(title)
         tip = QLabel(
             "它完全在本机合成，不再走网络。第一次要下载独立运行环境和约 760MB 模型，"
-            "装在安装目录的 local_tts 里；下载完才能选这个声音。中途关掉会保留已下载的部分，"
-            "下次接着来。", objectName="Muted")
+            "装在安装目录的 local_tts 里；下载完才能选这个声音。下载时可以关掉这个窗口，"
+            "安装会在后台继续，下次打开还能看到进度。", objectName="Muted")
         tip.setWordWrap(True)
         lay.addWidget(tip)
 
@@ -73,23 +60,61 @@ class LocalTtsInstallDialog(QDialog):
         row.addWidget(self.btn_start)
         lay.addLayout(row)
 
-    def start_install(self) -> None:
-        if self._worker is not None and self._worker.isRunning():
+        job.progress.connect(self.on_progress)
+        job.done.connect(self.on_done)
+        job.failed.connect(self.on_failed)
+        self._sync()
+
+    # ---- 状态同步 -------------------------------------------------------
+    def _sync(self) -> None:
+        st = job.state()
+        if st["running"]:
+            self.ok = False
+            self.bar.setValue(int(st["pct"]))
+            self.lbl.setText(st["msg"] or "正在下载…")
+            self.btn_start.setEnabled(False)
+            self.btn_start.setText("下载中…")
+            self.btn_close.setEnabled(True)
+            self.btn_close.setText("后台继续")
+            for line in st["lines"][-200:]:
+                if line:
+                    self.log.append(line)
             return
-        self.btn_start.setEnabled(False)
-        self.btn_close.setEnabled(False)
-        self.btn_start.setText("下载中…")
+        if st["ok"] or local_tts.is_ready():
+            self.ok = True
+            self.bar.setValue(100)
+            self.lbl.setText("装好了，本地语音服务已经起来。")
+            self.btn_start.setEnabled(False)
+            self.btn_start.setText("已装好")
+            self.btn_close.setText("关闭")
+            return
+        if st["error"]:
+            self.ok = False
+            self.lbl.setText("上次没装成：可以看日志，再点「重试」。")
+            self.log.append("失败：" + str(st["error"]))
+            self.btn_start.setEnabled(True)
+            self.btn_start.setText("重试")
+            self.btn_close.setText("关闭")
+            return
+        self.ok = False
+        self.bar.setValue(0)
+        self.lbl.setText("准备好了就点「开始下载」。")
+        self.btn_start.setEnabled(True)
+        self.btn_start.setText("开始下载")
+        self.btn_close.setText("关闭")
+
+    def start_install(self) -> None:
+        if not job.start():
+            self._sync()
+            return
         self.ok = False
         self.log.clear()
         self.bar.setValue(0)
         self.lbl.setText("正在准备…")
-        w = _Worker(self)
-        w.progress.connect(self.on_progress)
-        w.done.connect(self.on_done)
-        w.failed.connect(self.on_failed)
-        w.finished.connect(self._on_finished)
-        self._worker = w
-        w.start()
+        self.btn_start.setEnabled(False)
+        self.btn_start.setText("下载中…")
+        self.btn_close.setEnabled(True)
+        self.btn_close.setText("后台继续")
 
     def on_progress(self, pct: int, msg: str) -> None:
         self.bar.setValue(max(0, min(100, int(pct))))
@@ -101,27 +126,23 @@ class LocalTtsInstallDialog(QDialog):
         self.bar.setValue(100)
         self.lbl.setText("装好了，本地语音服务已经起来。")
         self.log.append(f"完成：{doc.get('version') or 'moss-tts-nano'}")
+        self.btn_start.setEnabled(False)
         self.btn_start.setText("已装好")
         self.btn_close.setEnabled(True)
         self.btn_close.setText("关闭")
-        self.accept()
+        if self.isVisible():
+            self.accept()
 
     def on_failed(self, why: str) -> None:
+        self.ok = False
         self.lbl.setText("没装成。可以看下面的日志，再点「重试」。")
         self.log.append("失败：" + why)
         self.btn_start.setText("重试")
         self.btn_start.setEnabled(True)
         self.btn_close.setEnabled(True)
-
-    def _on_finished(self) -> None:
-        if self.ok:
-            return
-        self.btn_start.setEnabled(True)
-        self.btn_close.setEnabled(True)
+        self.btn_close.setText("关闭")
 
     def closeEvent(self, event) -> None:  # noqa: N802
-        if self._worker is not None and self._worker.isRunning():
-            self.lbl.setText("还在下载，等它跑完再关；现在关掉会中断。")
-            event.ignore()
-            return
+        # 安装不再绑在这个窗口上：关掉只是不看进度，任务继续跑。
+        self.ok = bool(job.state()["ok"])
         super().closeEvent(event)

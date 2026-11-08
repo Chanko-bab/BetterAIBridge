@@ -56,7 +56,13 @@ class VoiceActionsMixin:
                 finally:
                     self._loading_voice = False
                 self._apply_engine_visibility()
-                self.lbl_voice.setText("本地语音包还没装，先退回 edge；想用再点「本地 MOSS」。")
+                from ...services.local_tts_job import job
+
+                if job.running:
+                    self.lbl_voice.setText("本地语音包正在后台下载，装好后可以再来选。")
+                    self.refresh_local_tts()
+                else:
+                    self.lbl_voice.setText("本地语音包还没装，先退回 edge；想用再点「本地 MOSS」。")
                 return
         self.save_voice()
 
@@ -66,9 +72,23 @@ class VoiceActionsMixin:
         except Exception as exc:  # noqa: BLE001
             self.lbl_local.setText(f"（读不到本地语音状态：{exc}）")
             return
+        from ...services.local_tts_job import job
+
+        st = job.state()
+        if st["running"]:
+            self.lbl_local.setText(
+                f"正在后台下载… {int(st['pct'])}% · {st['msg'] or '准备中'}（关掉窗口也会继续）")
+            self.btn_local_install.setText("查看下载进度")
+            from PySide6.QtCore import QTimer
+
+            QTimer.singleShot(1500, self.refresh_local_tts)
+            return
         if ready:
             self.lbl_local.setText("已装好。第一次合成会加载模型，可能要几十秒。")
             self.btn_local_install.setText("重装 / 修复")
+        elif st["error"]:
+            self.lbl_local.setText("上次没装成。点「下载本地语音包」可以重试，已下的部分会接着用。")
+            self.btn_local_install.setText("重试下载")
         else:
             self.lbl_local.setText("还没装。约 760MB 模型 + 依赖，装好才能保存这个声音。")
             self.btn_local_install.setText("下载本地语音包")

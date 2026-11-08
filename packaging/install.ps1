@@ -2818,7 +2818,12 @@ function Copy-Payload([string]$Src, [string]$Dst) {
 
 
 
-        Copy-Item -LiteralPath $item.FullName -Destination (Join-Path $Dst $item.Name) -Recurse -Force
+        if ($item.PSIsContainer) {
+            # 合并进同名目录（Copy-Item -Recurse 会在已存在的目录里再套一层 name\name）
+            Copy-Except $item.FullName (Join-Path $Dst $item.Name) @() 0
+        } else {
+            Copy-Item -LiteralPath $item.FullName -Destination (Join-Path $Dst $item.Name) -Force
+        }
 
 
 
@@ -4198,6 +4203,29 @@ if ($Silent) {
 
 
 
+
+
+    # 测试/静默安装：可选建一个不跟版本走的稳定入口（正式交互安装走后面的 New-Shortcut）
+    if ($env:BAB_TEST_SHORTCUT -and $env:BAB_TEST_SHORTCUT -ne "0") {
+        try {
+            $launcher = Join-Path $Target $LauncherFile
+            if (Test-Path -LiteralPath $launcher) {
+                $desktop = [Environment]::GetFolderPath("Desktop")
+                $lnkPath = Join-Path $desktop ($LauncherName + ".lnk")
+                $ws = New-Object -ComObject WScript.Shell
+                $lnk = $ws.CreateShortcut($lnkPath)
+                $lnk.TargetPath = $launcher
+                $lnk.WorkingDirectory = $Target
+                $lnk.Description = $AppName
+                $icon = Join-Path $Target "assets\bab.ico"
+                if (Test-Path -LiteralPath $icon) { $lnk.IconLocation = "$icon,0" }
+                $lnk.Save()
+                Write-Host "[install] shortcut -> $lnkPath"
+            }
+        } catch {
+            Write-Host "[install] shortcut skipped: $_"
+        }
+    }
     exit 0
 
 
