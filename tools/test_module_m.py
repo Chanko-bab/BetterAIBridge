@@ -230,6 +230,39 @@ def check_rename_migration() -> None:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+
+def check_starter() -> None:
+    """M 自带的最小起步包必须自己能过校验、只有一个工具、脚本是 ASCII+CRLF。"""
+    st = SRC / "starter" / "program_starter.pbab"
+    check(st.is_dir(), f"缺最小起步包：{st}")
+    if not st.is_dir():
+        return
+    try:
+        from app.core import pbab  # noqa: PLC0415
+
+        info = pbab.validate(st)
+        check(info["manifest"]["id"] == "starter", f"starter 的 id 不对：{info['manifest'].get('id')}")
+        check(int(info.get("members") or 0) >= 7, f"starter 文件太少：{info.get('members')}")
+    except Exception as exc:  # noqa: BLE001
+        check(False, f"starter 过不了 pbab.validate：{exc!r}")
+    man = json.loads((st / "module.json").read_text(encoding="utf-8-sig"))
+    check((man.get("health") or {}).get("type") == "http", "starter 的 health 应为 http")
+    check((man.get("bridge") or {}).get("wants") == ["notice.push"], "starter 只该申请 notice.push")
+    conn = json.loads((st / "connection.json").read_text(encoding="utf-8-sig"))
+    tools = (conn.get("provides") or {}).get("tools") or []
+    eps = {str(e.get("name") or ""): e for e in ((conn.get("provides") or {}).get("endpoints") or [])}
+    check(len(tools) == 1 and tools[0].get("name") == "starter_echo", f"starter 工具不对：{tools}")
+    check("echo" in eps and str(eps["echo"].get("path") or "") == "/echo", f"starter 端点不对：{eps}")
+    raw = (st / "start.cmd").read_bytes()
+    check(not raw.startswith(b"\xef\xbb\xbf"), "starter 的 start.cmd 不该带 BOM")
+    try:
+        text = raw.decode("ascii")
+    except UnicodeDecodeError:
+        check(False, "starter 的 start.cmd 不是纯 ASCII")
+        text = ""
+    check("\r\n" in text and "BAB_MODULE_PORT" in text, "starter 的 start.cmd 缺 CRLF 或 BAB_MODULE_PORT")
+
+
 def main() -> int:
     if not SRC.is_dir():
         print(f"skip: 没有 {SRC}")
@@ -352,6 +385,11 @@ def main() -> int:
         check_rename_migration()
     except Exception as exc:  # noqa: BLE001
         check(False, f"旧 id 迁移验不过：{type(exc).__name__}: {exc}")
+
+    try:
+        check_starter()
+    except Exception as exc:  # noqa: BLE001
+        check(False, f"starter 验不过：{type(exc).__name__}: {exc}")
 
     if "--smoke" in sys.argv:
         smoke()
