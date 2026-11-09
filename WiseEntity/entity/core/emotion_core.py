@@ -627,13 +627,13 @@ def llm_refine(force: bool = False) -> dict:
         return {"refined": 0, "skipped": "too soon"}
     _LLM_AT = time.time()
     lines = "\n".join(
-        f"{i+1}. [{'他' if p.get('owner') else '别人'}] {p.get('text')}"
+        f"{i+1}. [{'对方' if p.get('owner') else '别人'}] {p.get('text')}"
         for i, p in enumerate(pend)
     )
     prompt = (
-        "你在帮一个中文 QQ 角色识别「这些话让她产生了什么情绪」。\n"
+        "你在帮一个中文 QQ 角色识别「这些话让智能体产生了什么情绪」。\n"
         "可选情绪键：" + "、".join(f"{k}({NAME[k]})" for k in KEYS) + "\n"
-        "对每条消息，判断她真正会起的情绪，强度 0.05–0.45（同一情绪重复出现要减弱）。\n"
+        "对每条消息，判断智能体真正会起的情绪，强度 0.05–0.45（同一情绪重复出现要减弱）。\n"
         "只输出 JSON：{\"events\":[{\"i\":1,\"emo\":\"anger\",\"delta\":0.3,\"why\":\"八个字内\"}]}\n"
         "没有明显情绪就别输出那条。不要解释。\n\n" + lines
     )

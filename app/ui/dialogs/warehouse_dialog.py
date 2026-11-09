@@ -1,4 +1,4 @@
-"""仓库查看器：主人能看到智能体收着的东西，也能删。"""
+"""仓库查看器：使用者能看到智能体收着的东西，也能删。"""
 from __future__ import annotations
 
 from datetime import datetime

@@ -40,14 +40,14 @@ ALLOWED = ("reach", "seek", "share")
 NOTICE_ONLINE = ""
 NOTICE_AWAY = "对方主动找您"
 
-_CN = {"reach": "想他", "seek": "想找点事", "share": "想说点开心事"}
+_CN = {"reach": "想对方", "seek": "想找点事", "share": "想说点开心事"}
 
 
 def _who(rel: str) -> str:
     """第一人称的关系句；称呼是「他/她/您/你」时不硬塞。"""
     title = str(S.user_title("") or "").strip()
     if title and title not in {"他", "她", "您", "你"}:
-        return f"对方是我的{rel}，我平时叫他「{title}」"
+        return f"对方是我的{rel}，我平时叫对方「{title}」"
     return f"对方是我的{rel}"
 
 
@@ -178,14 +178,14 @@ async def maybe_send(force: bool = False, trigger: str = "") -> Dict:
     if trigger == "idle":
         prompt = (
             f"（{_who(rel)}。"
-            "他这会儿一直在线，可很久没出声了。我想主动说一句，"
-            "或者问一句他在忙什么；用我们平常的说法，可以随口一点，"
+            "对方这会儿一直在线，可很久没出声了。我想主动说一句，"
+            "或者问一句对方在忙什么；用我们平常的说法，可以随口一点，"
             "别客服腔，别每次都问「在吗」，别解释我为什么开口，不超过 25 个字。）"
         )
     elif trigger == "online":
         prompt = (
             f"（{_who(rel)}。"
-            "他刚把状态从「忙碌」改回「在线」，说明现在可以打扰。"
+            "对方刚把状态从「忙碌」改回「在线」，说明现在可以打扰。"
             "我想主动说一句，或者问一句；用我们平常的说法，可以随口一点，"
             "别客服腔，别每次都问「在吗」，别解释我为什么开口，不超过 25 个字。）"
         )
@@ -193,7 +193,7 @@ async def maybe_send(force: bool = False, trigger: str = "") -> Dict:
         prompt = (
             f"（{_who(rel)}。"
             f"我现在心里有点{urge}（{float(top.get('urgency') or 0):.2f}），"
-            "想主动找他说一句。只说一句，不超过 20 个字；别说「在吗」，别解释我为什么开口。）"
+            "想主动找对方说一句。只说一句，不超过 20 个字；别说「在吗」，别解释我为什么开口。）"
         )
     # 想说话，但也可以选择不说：驱动越低越容易闭嘴
     urge = float(top.get("urgency") or 0.0)

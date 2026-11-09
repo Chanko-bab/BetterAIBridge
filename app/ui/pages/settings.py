@@ -360,7 +360,7 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         wrow.addStretch(1)
         obox.addLayout(wrow)
         obox.addWidget(QLabel(
-            "耳朵已经收掉了：主人说话走聊天框的「按住说话」，不再后台听。",
+            "耳朵已经收掉了：你说话走聊天框的「按住说话」，不再后台听。",
             objectName="Muted"))
         obox.addWidget(self.cb_announce)
 
@@ -390,7 +390,7 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         vbox.addWidget(QLabel("语音消息", objectName="CardTitle"))
         vbox.addWidget(QLabel(
             "聊天框左边有个麦克风：按住说话，松手发出去。录音最少 5 秒、最多 90 秒；"
-            "发出去会显示成一条可点击播放的音频，同时自动转成文字给她看。",
+            "发出去会显示成一条可点击播放的音频，同时自动转成文字给智能体看。",
             objectName="Muted"))
         mrow = QHBoxLayout()
         mrow.setSpacing(8)
@@ -563,7 +563,7 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         wbox.setSpacing(8)
         wbox.addWidget(QLabel("仓库", objectName="CardTitle"))
         wbox.addWidget(QLabel(
-            "主人发来的图片/文档、智能体自己收着的东西、模组放的东西都在这里。"
+            "聊天里收到的图片/文档、智能体自己收着的东西、模组放的东西都在这里。"
             "智能体收下的副本不会自动清；你可以打开看，也可以删。",
             objectName="Muted"))
         wrow = QHBoxLayout()
@@ -706,7 +706,7 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         except Exception as exc:  # noqa: BLE001
             return f"（读不到眼睛配置：{exc}）"
         if not c.get("eyes"):
-            return "眼睛关着：智能体不会自己看。主人按住说话不受影响。"
+            return "眼睛关着：智能体不会自己看。你按住说话不受影响。"
         cam = str(c.get("camera") or "")
         if cam == "screen":
             where = "屏幕（只看屏幕）"
@@ -1124,7 +1124,7 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         self.lbl_model.setText(str(cfg.get("model") or "deepseek-chat"))
         self.lbl_base.setText(str(cfg.get("api_base") or "https://api.deepseek.com/v1"))
         self.lbl_key.setText(self._mask(str(cfg.get("api_key") or "")))
-        self.lbl_rel.setText(str(cfg.get("relation") or "主人"))
+        self.lbl_rel.setText(str(cfg.get("relation") or "对方"))
         try:
             self.lbl_rel_title.setText("你是" + framework_setup.pronoun() + "的")
         except Exception:  # noqa: BLE001

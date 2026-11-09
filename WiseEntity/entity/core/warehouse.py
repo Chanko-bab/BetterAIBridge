@@ -1,11 +1,11 @@
-"""仓库：智能体自己的收藏 + 主人/模组的库。
+"""仓库：智能体自己的收藏 + 对方/模组的库。
 
 不是聊天缓存。这里的每一条都要有“是什么、为什么留下”，收藏是智能体
 看完之后主动留下的副本，和记忆互相引用。
 
 目录：
 
-- `warehouse/libraries/owner-main/`：主人发来的，默认库；
+- `warehouse/libraries/owner-main/`：对方发来的，默认库；
 - `warehouse/libraries/agent-collection/`：智能体自己收着的副本；
 - `warehouse/libraries/mod-<模组>-<库>/`：模组申请的库，默认 `main`。
 
@@ -49,7 +49,7 @@ _MIGRATED = False
 _DEFAULT_LIBS = {
     OWNER_LIB: {
         "id": OWNER_LIB, "owner_type": "owner", "owner_id": "owner",
-        "title": "主人发来的", "purpose": "主人发来的图片、文档和文件",
+        "title": "聊天里收到的", "purpose": "聊天里收到的图片、文档和文件",
         "quota_mb": 0, "default": True,
     },
     AGENT_LIB: {
@@ -175,8 +175,8 @@ def _ensure_source_lib(source: str) -> str:
     else:
         lib = OWNER_LIB
         if lib not in libs:
-            ensure_library(lib, "owner", "owner", title="主人发来的",
-                           purpose="主人发来的图片、文档和文件", default=True)
+            ensure_library(lib, "owner", "owner", title="聊天里收到的",
+                           purpose="聊天里收到的图片、文档和文件", default=True)
     return lib
 
 
@@ -580,7 +580,7 @@ def read_text(item_id: str, max_chars: int = MAX_TEXT) -> Dict[str, Any]:
         raise ValueError("文件已经不在仓库里了")
     ext = str(row.get("ext") or "").lower()
     if ext not in TEXT_EXTS:
-        raise ValueError("这类文件只存不读正文；可以发出去，或让主人打开看")
+        raise ValueError("这类文件只存不读正文；可以发出去，或让对方打开看")
     data = path.read_bytes()[: max(200, int(max_chars)) * 4]
     text = data.decode("utf-8", errors="replace")
     clipped = text[: max(200, int(max_chars))]
@@ -681,7 +681,7 @@ def fragment(query: str = "", limit: int = 4) -> str:
         if tags:
             line += f"〔{'、'.join(tags[:4])}〕"
         lines.append(line)
-    lines.append("想翻的时候用 warehouse_search；想给他看用 send_media；没看过的不要假装看过。")
+    lines.append("想翻的时候用 warehouse_search；想给对方看用 send_media；没看过的不要假装看过。")
     return "\n".join(lines)
 
 

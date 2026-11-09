@@ -56,14 +56,14 @@ def fragment() -> str:
     if not one["custom"]:
         return (
             "# 你的头像\n"
-            f"我现在的头像还是默认的{DEFAULT_NAME}（灰发、像素风的小女孩头像），主人还没给我换过。\n"
+            f"我现在的头像还是默认的{DEFAULT_NAME}（灰发、像素风的小女孩头像），对方还没给我换过。\n"
             "想看看自己现在的样子，可以调 avatar_see。\n"
         )
     when = one.get("updated_at") or "最近"
-    who = one.get("updated_by") or "主人"
+    who = one.get("updated_by") or "对方"
     return (
         "# 你的头像\n"
-        "主人给我换过头像了。现在的头像是一张方形图片，文件在：\n"
+        "对方给我换过头像了。现在的头像是一张方形图片，文件在：\n"
         f"{one['path']}\n"
         f"（{who} 在 {when} 换的。）\n"
         "想看自己现在的样子，可以调 avatar_see；别人问起时，照你看到的和这张图的来历说。\n"

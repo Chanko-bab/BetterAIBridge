@@ -118,7 +118,7 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
         "module_status": {
             "name": "module_status",
             "module": "self",
-            "module_name": "她自己",
+            "module_name": "自己",
             "hint": "看看模组现在都什么状况：谁开着、谁掉线了、为什么",
             "args": {},
             "method": "POST",
@@ -129,8 +129,8 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
         "warehouse_list": {
             "name": "warehouse_list",
             "module": "self",
-            "module_name": "她自己",
-            "hint": "看仓库里有什么：主人发来的、你自己收着的、模组给的，都能列",
+            "module_name": "自己",
+            "hint": "看仓库里有什么：对方发来的、你自己收着的、模组给的，都能列",
             "args": {"kind": "image|document|file?", "query": "按文件名找?",
                      "library": "库 id?（不填就列全部）"},
             "method": "POST",
@@ -141,7 +141,7 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
         "warehouse_search": {
             "name": "warehouse_search",
             "module": "self",
-            "module_name": "她自己",
+            "module_name": "自己",
             "hint": "翻仓库：按标题/描述/标签/为什么留着找，尤其适合找自己收过的东西",
             "args": {"query": "要找的词", "kind": "image|document|file?",
                      "library": "库 id?"},
@@ -153,7 +153,7 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
         "warehouse_inspect": {
             "name": "warehouse_inspect",
             "module": "self",
-            "module_name": "她自己",
+            "module_name": "自己",
             "hint": "先看懂一条：图片说出内容、文本给摘要、文档给基本信息；收下/发出前先做",
             "args": {"id": "仓库条目的 id 或文件名"},
             "method": "POST",
@@ -164,7 +164,7 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
         "warehouse_keep": {
             "name": "warehouse_keep",
             "module": "self",
-            "module_name": "她自己",
+            "module_name": "自己",
             "hint": "看完觉得值得留，就复制进自己的收藏，并记一笔“为什么留”",
             "args": {"id": "仓库条目的 id 或文件名", "title": "你给它起的名字?",
                      "desc": "它是什么?", "why": "为什么留?", "tags": "标签数组?"},
@@ -176,7 +176,7 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
         "warehouse_read": {
             "name": "warehouse_read",
             "module": "self",
-            "module_name": "她自己",
+            "module_name": "自己",
             "hint": "读仓库里一个文本文件（txt/md/csv/json 等）；PDF/DOCX 只存不读",
             "args": {"id": "仓库条目的 id 或文件名"},
             "method": "POST",
@@ -187,7 +187,7 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
         "warehouse_forget": {
             "name": "warehouse_forget",
             "module": "self",
-            "module_name": "她自己",
+            "module_name": "自己",
             "hint": "把收藏里的某一条删掉（只删收藏，不删记忆）",
             "args": {"id": "仓库条目的 id 或文件名"},
             "method": "POST",
@@ -198,7 +198,7 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
         "see_image": {
             "name": "see_image",
             "module": "self",
-            "module_name": "她自己",
+            "module_name": "自己",
             "hint": "看仓库里的一张图，并说出你看到了什么（可以用它回答对方）",
             "args": {"id": "仓库条目的 id 或文件名", "question": "可选：你想在画面里找什么"},
             "method": "POST",
@@ -209,7 +209,7 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
         "send_media": {
             "name": "send_media",
             "module": "self",
-            "module_name": "她自己",
+            "module_name": "自己",
             "hint": "从收藏里挑一张图或一个文件发到聊天；必须先 warehouse_inspect 看过",
             "args": {"id": "仓库条目的 id 或文件名", "caption": "可选：附一句话"},
             "method": "POST",
@@ -220,8 +220,8 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
         "avatar_see": {
             "name": "avatar_see",
             "module": "self",
-            "module_name": "她自己",
-            "hint": "看你自己的头像（主人可能换过），这样你才知道自己现在长什么样",
+            "module_name": "自己",
+            "hint": "看你自己的头像（对方可能换过），这样你才知道自己现在长什么样",
             "args": {},
             "method": "POST",
             "url": "",
@@ -233,8 +233,8 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
         out["look_around"] = {
             "name": "look_around",
             "module": "self",
-            "module_name": "她自己",
-            "hint": "看一眼主人那边（摄像头优先，没选就看屏幕），回来告诉你看到了什么",
+            "module_name": "自己",
+            "hint": "看一眼对方那边（摄像头优先，没选就看屏幕），回来告诉你看到了什么",
             "args": {"question": "可选：你想在画面里找什么"},
             "method": "POST",
             "url": "",

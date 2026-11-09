@@ -105,7 +105,7 @@ def main() -> int:
                                      {"name": "seek", "urgency": 0.65}]}  # type: ignore[assignment]
         out = D.fragment()
         check(out.startswith("# 你现在想干什么"), f"驱动块标题不对：{out!r}")
-        check(out.count("\n- ") == 1 and "找他说话" in out, f"驱动应只一条：{out!r}")
+        check(out.count("\n- ") == 1 and "找对方说话" in out, f"驱动应只一条：{out!r}")
     finally:
         D.poll = orig
 

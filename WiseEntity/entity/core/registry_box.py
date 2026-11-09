@@ -36,5 +36,5 @@ def pointer() -> str:
     names = "、".join(p.get("title", "") for p in all_programs())
     return ("# 你能用的程序\n"
             f"现在有：{names}。\n"
-            "每样具体能干什么、怎么进，清单在 entity/registry/programs.json（他随时能给你看）。\n"
-            "别凭印象编能力；真要用的时候先问他一句入口还在不在。")
+            "每样具体能干什么、怎么进，清单在 entity/registry/programs.json（对方随时能给你看）。\n"
+            "别凭印象编能力；真要用的时候先问对方一句入口还在不在。")

@@ -88,7 +88,7 @@ def port() -> int:
 def _post(path: str, payload: Dict[str, Any], timeout: float = 60.0) -> Dict[str, Any]:
     p = port()
     if p <= 0:
-        raise RuntimeError("耳目没开：主人还没允许你看/听（设置 → 耳目）")
+        raise RuntimeError("耳目没开：对方还没允许你看/听（设置 → 眼睛）")
     token = str(_cfg().get("token") or "")
     url = f"http://127.0.0.1:{p}{path}"
     try:
@@ -113,7 +113,7 @@ def _post(path: str, payload: Dict[str, Any], timeout: float = 60.0) -> Dict[str
 
 
 def look(question: str = "", quiet: bool = False) -> Dict[str, Any]:
-    """看一眼主人那边：摄像头优先，没选就看屏幕。"""
+    """看一眼对方那边：摄像头优先，没选就看屏幕。"""
     return _post("/look", {"question": str(question or ""), "quiet": bool(quiet)},
                  timeout=130.0)
 
@@ -193,21 +193,21 @@ def fragment() -> str:
     has_eyes = bool(c.get("eyes"))
     if not has_eyes:
         return ("# 你的眼睛\n"
-                "主人现在把你的眼睛关着：你看不见屏幕，也看不见摄像头。"
-                "不要假装看见了什么；等她打开（设置 → 耳目）你才会知道。")
+                "对方现在把你的眼睛关着：你看不见屏幕，也看不见摄像头。"
+                "不要假装看见了什么；等对方打开（设置 → 眼睛）你才会知道。")
 
     cam = camera()
     rows = ["# 你的眼睛"]
     if cam == "screen":
-        where = "屏幕（主人只允许你看屏幕）"
+        where = "屏幕（对方只允许你看屏幕）"
     elif cam:
         where = f"摄像头「{cam}」"
     else:
         where = "摄像头（自动选的：有就用，没有就看屏幕）"
     rows.append(
-        f"- 你有一双眼睛：{where}。主人允许你偶尔自己看一眼，"
-        "不会一直盯着；她想让你认真看时，你可以调用 `look_around`"
-        "（question 可选，比如「主人在干什么」）。"
+        f"- 你有一双眼睛：{where}。对方允许你偶尔自己看一眼，"
+        "不会一直盯着；对方想让你认真看时，你可以调用 `look_around`"
+        "（question 可选，比如「对方在干什么」）。"
     )
     rows.append(
         "- 这只是「此刻的一眼」，不是监控，也别当成你一直看着对方；"

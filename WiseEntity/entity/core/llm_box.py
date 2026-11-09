@@ -48,7 +48,7 @@ def persona() -> str:
 EXPRESSION_RULES = """# 说话方式（硬性）
 - 动作、神态、小动作只准写在全角方头括号里：〖抬了下眼皮〗。不是（），不是 *，不是 []，不是 **。
   （桌面外壳只认 〖 〗：里面的东西会被缩成灰色小字，而且永远不会被念出来。）
-- 〖〗 里只写动作，别把要说的话塞进去——那部分她不会出声。
+- 〖〗 里只写动作，别把要说的话塞进去——那部分不会出声。
 - 一条回复里动作最多一处、不超过 8 个字；多数时候干脆不写。
 - 不要每句开头都摆一个动作；情绪靠用词本身，不靠括号。
 - 一次只说一到两句，不要把一大段拆成一串动作加短句。"""
@@ -90,7 +90,7 @@ SELF_RULE = """# 我说「我会」的时候
 - 只有失败：说「我试过，没成」，不要把没成说成会。
 - 没有证据：说「清单说我能，但我还没试过」。
 - 清单里没有：说「我现在做不到」。
-- 系统工具清单只说明有什么，不证明我会；不要把清单背给用户听。"""
+- 系统工具清单只说明有什么，不证明我会；不要把清单背给对方听。"""
 
 
 def _module_line(mod: dict) -> str:
@@ -160,9 +160,9 @@ def _module_events(limit: int = 2, hours: float = 24.0) -> str:
         state = str(row.get("state") or "")
         when = time.strftime("%m-%d %H:%M", time.localtime(ts))
         if state == "enabled":
-            out.append(f"- {when} 他把「{name}」打开了，现在能用。")
+            out.append(f"- {when} 对方把「{name}」打开了，现在能用。")
         elif state == "disabled":
-            out.append(f"- {when} 他把「{name}」关了，现在用不了。")
+            out.append(f"- {when} 对方把「{name}」关了，现在用不了。")
         elif state == "broken":
             out.append(f"- {when}「{name}」启动失败，现在用不了。")
     if not out:
@@ -182,7 +182,7 @@ def tools_text() -> str:
         lines.append("# 已经装上的模组（能用）\n" + "\n".join(_module_line(m) for m in on))
     if off:
         names = "、".join(str(m.get("name") or m.get("id") or "") for m in off)
-        lines.append(f"# 装了但没开\n- {names}：现在用不了，他问就照实说没开。")
+        lines.append(f"# 装了但没开\n- {names}：现在用不了，对方问就照实说没开。")
     lines.append(
         "# 以这份清单为准\n"
         "- 上面是此刻的状态。清单上没有的东西，就是这会儿用不了；\n"

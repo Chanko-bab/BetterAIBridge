@@ -1,4 +1,4 @@
-"""主人现在在不在：online / busy / away。
+"""对方现在在不在：online / busy / away。
 
 - 桌面壳上的【在线】【忙碌】按钮改这里；
 - 关掉窗口默认 busy；
@@ -16,12 +16,12 @@ LEVELS = ("online", "busy", "away")
 _LABEL = {
     "online": "在线",
     "busy": "忙碌",
-    "away": "不在家",
+    "away": "不在",
 }
 _HINT = {
-    "online": "他现在在电脑前，也没在忙别的事。你可以自然地找他说话。",
-    "busy": "他现在忙。别主动找他，他说话你就简短回，别拉长。",
-    "away": "他现在不在家 / 不在电脑前。别主动找他；他要是说话，正常回。",
+    "online": "对方现在在电脑前，也没在忙别的事。你可以自然地找对方说话。",
+    "busy": "对方现在忙。别主动找对方，对方说话你就简短回，别拉长。",
+    "away": "对方现在不在 / 不在电脑前。别主动找对方；对方要是说话，正常回。",
 }
 
 
@@ -54,7 +54,7 @@ def fragment() -> str:
     st = get()
     state = st["state"]
     hint = _HINT.get(state, _HINT["busy"])
-    return f"# 他现在的状态\n{_LABEL.get(state, '忙碌')}（{st.get('updated_at', '')[:16]}）。{hint}"
+    return f"# 对方现在的状态\n{_LABEL.get(state, '忙碌')}（{st.get('updated_at', '')[:16]}）。{hint}"
 
 
 def is_online() -> bool:

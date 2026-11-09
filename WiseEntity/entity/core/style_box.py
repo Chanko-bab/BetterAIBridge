@@ -175,7 +175,7 @@ def _local(text: str) -> Dict[str, Any]:
     return normalize(row)
 
 
-_PROMPT = """你是一个性格参数分析器。把用户写下的性格描述，转成 13 个情绪维度的数值。
+_PROMPT = """你是一个性格参数分析器。把对方写下的性格描述，转成 13 个情绪维度的数值。
 
 维度：joy 开心、calm 理智、love 喜欢、pride 自豪、anger 生气、anxiety 焦虑、fear 害怕、
 sadness 难过、shame 羞耻、disgust 厌恶、envy 嫉妒、surprise 惊讶、confusion 困惑。
@@ -263,7 +263,7 @@ def fragment() -> str:
         return ""
     seeds = "、".join(f"{EMO_CN[k]}{d['seeds'][k]:.0f}" for k in KEYS)
     return (
-        "## 我的性格（主人写的，按这个来）\n"
+        "## 我的性格（对方写的，按这个来）\n"
         f"{d['summary'] or '（没有一句话概括）'}\n"
         f"机制：{d['logic'] or '按上面的描述来。'}\n"
         f"情绪底子：{seeds}。\n"

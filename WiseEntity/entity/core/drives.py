@@ -25,7 +25,7 @@ SPECS = [
 
 TEXT = {
     "seek":    "有点闲得慌，想自己找点事做（翻翻旧东西、想想事、看个视频都行）。",
-    "reach":   "有点想找他说话，但别一上来就问在不在。",
+    "reach":   "有点想找对方说话，但别一上来就问在不在。",
     "share":   "有股想分享点什么的劲，说话可以松一点。",
     "explore": "对什么有点好奇，想多看一眼再走。",
     "rest":    "有点困，话少一点，别硬撑。",
@@ -178,7 +178,7 @@ async def _compose_reach(hours: float) -> str:
         pass
     _now = datetime.now().strftime("%H:%M")
     prompt = (
-        f"现在是 {_now}。你已经 {hours:.1f} 小时没跟他说话了，心里有点想他。"
+        f"现在是 {_now}。你已经 {hours:.1f} 小时没跟对方说话了，心里有点想对方。"
         f"你自己决定要不要说一句、说什么（不用汇报情绪，不用解释，一句话，最多 40 字）。"
         f"如果你觉得不用说，就只回一个「-」。"
     )
@@ -237,7 +237,7 @@ async def _act_reach(top: dict) -> dict:
         return {"ok": True, "acted": None, "reason": "she chose not to speak"}
     res = await _deliver(text)
     try:
-        brain_box.note_thought(f"想跟他说一句：{text}", "reach-act")
+        brain_box.note_thought(f"想跟对方说一句：{text}", "reach-act")
     except Exception:
         pass
     st = _load()
@@ -264,7 +264,7 @@ async def _compose_seek() -> dict:
     prompt = (
         f"现在是 {_now}。你现在有点闲得慌。你可以：\n"
         "1) 自己翻翻旧事、想点东西（think）；\n"
-        "2) 找他说一句话（dm）；\n"
+        "2) 找对方说一句话（dm）；\n"
         "3) 去一个你已经在的群里冒个泡（group）。\n"
         "选一个，然后写要说的话（think 就写你脑子里想的那一句）。"
         '只输出 JSON：{"do":"think|dm|group","text":"…","why":"…"}，text 不超过 40 字。'

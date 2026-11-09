@@ -107,6 +107,8 @@ SUITES = [
      "仓库：库/收藏/去重/隔离、inspect/keep、模组多库、发送队列、桥能力"),
     ("warehouse_ui", "tools/test_warehouse_ui.py", "gui",
      "仓库界面：附件按钮、待发条、图片/文件气泡、仓库查看器"),
+    ("person_terms", "tools/test_person_terms.py", "kernel",
+     "称呼扫描：提示词/工具/仓库只说对方，不出现主人/用户/他/她"),
     ("styles", "tools/test_styles.py", "kernel", "人设：16 套底表与开局取值"),
     ("emotion_bridge", "tools/test_emotion_bridge.py", "kernel", "情绪接线：6 调质 → 13 维、量程、推力上限"),
     ("calm_model", "tools/test_calm_model.py", "kernel", "理智：分档、人格基线、软饱和、存档迁移、调质上限"),

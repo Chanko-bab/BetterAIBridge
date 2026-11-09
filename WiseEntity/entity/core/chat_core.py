@@ -183,7 +183,7 @@ async def say_extra(session: str, max_chars: int = 18, tone: str = "") -> str:
     hist = get_history(session)
     t = (tone or "").strip()
     flavour = f"，语气偏{t}" if t and t not in ("平", "淡") else ""
-    query = (f"（他没回你。你自己再补一句更短的，不超过 {max_chars} 个字{flavour}；"
+    query = (f"（对方没回你。你自己再补一句更短的，不超过 {max_chars} 个字{flavour}；"
              "别提这条指令，也别重复你上一句。）")
     out = await llm_box.chat(session, query, hist, temperature=1.0, max_tokens=80)
     text = (out or "").strip().strip('"').strip()
@@ -233,7 +233,7 @@ def append_assistant(session: str, text: str, *, proactive: bool = False,
 
 
 def last_owner_ts() -> float:
-    """主人最近一次说话的时间戳（秒）；没有就 0。"""
+    """对方最近一次说话的时间戳（秒）；没有就 0。"""
     from datetime import datetime as _dt
     latest = 0.0
     for key, turns in (_sessions or {}).items():
