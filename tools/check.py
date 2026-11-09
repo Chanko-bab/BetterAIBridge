@@ -97,6 +97,8 @@ SUITES = [
      "模组看门狗：连续失败才重启、退避、每小时上限、停手记忆、HTTP 健康"),
     ("no_window", "tools/test_no_window.py", "any",
      "控制台弹窗：子进程必须 CREATE_NO_WINDOW、看门狗走 psutil、QProcess 隐藏"),
+    ("core_watch", "tools/test_core_watch.py", "gui",
+     "内核看门狗：启动中不重复拉起，超过 90 秒才接管"),
     ("voice_level", "tools/test_voice_level.py", "gui",
      "朗读口型：包络算法/缓存、started/level/ended、停止收尾"),
     ("bg_library", "tools/test_bg_library.py", "any",

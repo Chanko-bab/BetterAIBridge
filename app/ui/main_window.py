@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 
 from ..core import config, framework_setup, logger
 from ..core.events import bus
-from ..services import probe, update, voice_level
+from ..services import probe, runtime, update, voice_level
 from ..services.core_client import CoreClient, CoreUnavailable
 from ..services.worker import run_async
 from . import fonts
@@ -798,6 +798,15 @@ class MainWindow(QMainWindow):
             self._core_down = 0
             return
         if up:
+            self._core_down = 0
+            return
+        # 启动器自己刚点过“启动内核”时，runtime 会先写 starting；
+        # 这段时间里别再拉第二份，否则第二份绑不上端口（10048）。
+        try:
+            rs = runtime.status()
+        except (OSError, RuntimeError):
+            rs = {}
+        if rs.get("state") == "starting" and time.time() - float(rs.get("at") or 0) < 90:
             self._core_down = 0
             return
         self._core_down += 1
