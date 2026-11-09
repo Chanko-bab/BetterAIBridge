@@ -49,8 +49,9 @@ def get_json(port: int, path: str, timeout: float = 1.0) -> dict:
 
 
 def make_temp_copy(tmp: Path) -> Path:
+    shutil.rmtree(FIX / "__pycache__", ignore_errors=True)
     dst = tmp / "program_probe.pbab"
-    shutil.copytree(FIX, dst)
+    shutil.copytree(FIX, dst, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     return dst
 
 
