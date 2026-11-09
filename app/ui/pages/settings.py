@@ -557,6 +557,25 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         mbox.addWidget(self.lbl_memory)
         body.addWidget(mcard)
 
+        wcard = QFrame(objectName="Card")
+        wbox = QVBoxLayout(wcard)
+        wbox.setContentsMargins(16, 14, 16, 14)
+        wbox.setSpacing(8)
+        wbox.addWidget(QLabel("仓库", objectName="CardTitle"))
+        wbox.addWidget(QLabel(
+            "主人发来的图片/文档、智能体自己收着的东西、模组放的东西都在这里。"
+            "智能体收下的副本不会自动清；你可以打开看，也可以删。",
+            objectName="Muted"))
+        wrow = QHBoxLayout()
+        wrow.setSpacing(8)
+        self.btn_warehouse = QPushButton("打开仓库", objectName="Ghost")
+        self.btn_warehouse.clicked.connect(self.open_warehouse)
+        wrow.addWidget(self.btn_warehouse)
+        self.lbl_warehouse = QLabel("", objectName="Muted")
+        wrow.addWidget(self.lbl_warehouse, 1)
+        wbox.addLayout(wrow)
+        body.addWidget(wcard)
+
         body.addWidget(QLabel("端口与模组池由程序自己分配；要强制指定，编辑 config\\install.json 的 base。", objectName="Muted"))
 
         row = QHBoxLayout()
@@ -622,6 +641,7 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         self.refresh_startup()
         self.refresh_asr()
         self.refresh_sense()
+        self.refresh_warehouse()
 
     # ---------------------------------------------------------------- 语音转写
 
@@ -1144,6 +1164,24 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         self.lbl_ports.setText("\n".join(lines))
 
     # ---------------------------------------------------------------- 目录
+    def refresh_warehouse(self) -> None:
+        try:
+            from app.services import warehouse
+
+            rows = warehouse.list_items()
+            collected = len(warehouse.collection(limit=999))
+            mb = sum(int(r.get("bytes") or 0) for r in rows) / 1024 / 1024
+            self.lbl_warehouse.setText(
+                f"共 {len(rows)} 件 · 收着 {collected} 件 · {mb:.1f} MB")
+        except (OSError, ValueError):
+            self.lbl_warehouse.setText("仓库暂时读不到")
+
+    def open_warehouse(self) -> None:
+        from ..dialogs.warehouse_dialog import WarehouseDialog
+
+        WarehouseDialog(self).exec()
+        self.refresh_warehouse()
+
     def open_config(self) -> None:
         subprocess.Popen(["notepad.exe", str(config.CONFIG_PATH)])
 

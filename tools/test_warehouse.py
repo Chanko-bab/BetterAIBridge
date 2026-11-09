@@ -1,9 +1,11 @@
-"""仓库：存、列、读、去重、来源隔离，以及聊天里的中性提示。"""
+"""仓库：库、收藏、去重、来源隔离、inspect/keep、聊天里的中性提示。"""
 from __future__ import annotations
 
+import asyncio
 import base64
 import sys
 import tempfile
+import time
 import shutil
 from pathlib import Path
 
@@ -30,13 +32,14 @@ PNG = base64.b64decode(
 def main() -> int:
     tmp = Path(tempfile.mkdtemp(prefix="bab_wh_"))
     old = warehouse.ENTITY
-    warehouse.ENTITY = tmp / "entity"
+    warehouse.ENTITY = tmp / "WiseEntity" / "entity"
     try:
         img = warehouse.put_bytes("owner", "猫.png", PNG)
         check(img["kind"] == "image", "png 归到图片")
+        check(img["library"] == warehouse.OWNER_LIB, "主人文件进 owner-main 库")
         check(img["bytes"] == len(PNG), "图片字节数正确")
         again = warehouse.put_bytes("owner", "换名.png", PNG)
-        check(again.get("existing") and again["id"] == img["id"], "同来源同 sha 去重")
+        check(again.get("existing") and again["id"] == img["id"], "同库同 sha 去重")
 
         txt = tmp / "note.txt"
         txt.write_text("第一行\n第二行", encoding="utf-8")
@@ -48,9 +51,22 @@ def main() -> int:
         check("第一行" in got["text"] and got["truncated"] is False, "文本能读出来")
 
         mod = warehouse.put_bytes("module:probe", "probe.txt", b"hi")
+        check(mod["library"] == "mod-probe-main", "模组文件进自己的默认库")
         check(len(warehouse.list_items(source="module:probe")) == 1, "模组只看到自己那条")
         check(warehouse.resolve("probe.txt", source="module:probe") is not None, "模组按名字找得到")
         check(warehouse.resolve("probe.txt", source="owner") is None, "主人这边看不到模组的")
+
+        libs = {x["id"]: x for x in warehouse.libraries()}
+        check(warehouse.OWNER_LIB in libs and warehouse.AGENT_LIB in libs, "两个默认库都在")
+        check("mod-probe-main" in libs, "模组默认库自动登记")
+
+        kept = warehouse.keep(img["id"], title="白猫", desc="一只白猫", why="看着舒服",
+                              tags=["猫", "表情包"])
+        check(kept["library"] == warehouse.AGENT_LIB, "收藏复制进 agent-collection")
+        check(warehouse.get(img["id"]) is not None, "收藏不删原条")
+        check(warehouse.collection()[0]["id"] == kept["id"], "收藏列表能找到")
+        frag = warehouse.fragment("猫")
+        check("我收着的东西" in frag and "白猫" in frag and "表情包" in frag, "提示块带标题/标签")
 
         blocked = tmp / "run.exe"
         blocked.write_bytes(b"MZ")
@@ -90,20 +106,45 @@ def main() -> int:
         chat_core.memory_store.raw_append = old_raw
 
         names = tool_bus.tools()
-        for n in ("warehouse_list", "warehouse_read", "see_image", "send_media"):
+        for n in ("warehouse_list", "warehouse_search", "warehouse_inspect",
+                  "warehouse_keep", "warehouse_read", "warehouse_forget",
+                  "see_image", "send_media"):
             check(n in names, f"内置工具 {n} 在")
-        for c in ("warehouse.put", "warehouse.list", "warehouse.read", "warehouse.mkdir"):
+        for c in ("warehouse.put", "warehouse.list", "warehouse.read",
+                  "warehouse.mkdir", "warehouse.libraries"):
             check(c in CAPS, f"桥能力 {c} 在")
 
+        # inspect 之前不能发
+        sent = asyncio.run(tool_bus._call_impl("send_media", {"id": img["id"]}))
+        check(sent.get("ok") is False and "inspect" in sent.get("error", ""),
+              "没 inspect 不能发")
+        warehouse.update_meta(img["id"], desc="一只白猫", inspected_at=time.time())
+        sent = asyncio.run(tool_bus._call_impl("send_media", {"id": img["id"], "caption": "给你"}))
+        check(sent.get("ok") is True and tool_bus.take_media("web:owner"), "inspect 后能发")
+        found = asyncio.run(tool_bus._call_impl("warehouse_search", {"query": "白猫"}))
+        check(found.get("ok") is True and found["result"]["count"] >= 1, "search 按描述找得到")
+
+        # 模组多库：手工登记一个，再让 bridge 访问
+        warehouse.ensure_library("mod-whmod-images", "module", "whmod",
+                                 title="图片", purpose="模组自己放的图", quota_mb=64)
         from WiseEntity.entity.core import bridge
         put = bridge._wh_put("whmod", name="给主人.txt",
-                             base64=base64.b64encode("你好".encode("utf-8")).decode())
-        check(put["source"] == "module:whmod", "模组桥写入落在自己的格")
+                             base64=base64.b64encode("你好".encode("utf-8")).decode(),
+                             library="main")
+        check(put["library"] == "mod-whmod-main", "模组桥默认库")
         seen = bridge._wh_list("whmod")
         check(seen["count"] == 1 and seen["items"][0]["name"] == "给主人.txt",
               "模组桥只看得到自己的")
         read = bridge._wh_read("whmod", id="给主人.txt")
         check("你好" in read["text"], "模组桥能读自己的文本")
+        libs = bridge._wh_libraries("whmod")
+        check(libs["count"] >= 2 and any(x["id"] == "mod-whmod-images" for x in libs["libraries"]),
+              "桥能列自己的多个库")
+        try:
+            bridge._wh_put("whmod", name="x.txt", base64="aGk=", library="not-mine")
+            check(False, "没申请的库应被拒绝")
+        except Exception:
+            check(True, "没申请的库被拒绝")
 
         tool_bus.queue_media("web:owner", {"id": "x", "name": "a.txt", "caption": "给你"})
         check(len(tool_bus.take_media("web:owner")) == 1, "待发媒体能排队")

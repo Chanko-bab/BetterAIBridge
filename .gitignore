@@ -29,6 +29,7 @@ logs/
 WiseEntity/entity/state/
 WiseEntity/entity/memory/internal/.raw/
 WiseEntity/entity/memory/bridge_token.json
+WiseEntity/entity/warehouse/
 **/data/
 **/_bak*/
 

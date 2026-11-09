@@ -130,12 +130,48 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
             "name": "warehouse_list",
             "module": "self",
             "module_name": "她自己",
-            "hint": "看看仓库里有什么：主人发来的图片/文件、你自己存的东西，都能列",
-            "args": {"kind": "image|document|file?", "query": "按文件名找?"},
+            "hint": "看仓库里有什么：主人发来的、你自己收着的、模组给的，都能列",
+            "args": {"kind": "image|document|file?", "query": "按文件名找?",
+                     "library": "库 id?（不填就列全部）"},
             "method": "POST",
             "url": "",
             "builtin": "warehouse_list",
             "max_seconds": 5.0,
+        },
+        "warehouse_search": {
+            "name": "warehouse_search",
+            "module": "self",
+            "module_name": "她自己",
+            "hint": "翻仓库：按标题/描述/标签/为什么留着找，尤其适合找自己收过的东西",
+            "args": {"query": "要找的词", "kind": "image|document|file?",
+                     "library": "库 id?"},
+            "method": "POST",
+            "url": "",
+            "builtin": "warehouse_search",
+            "max_seconds": 5.0,
+        },
+        "warehouse_inspect": {
+            "name": "warehouse_inspect",
+            "module": "self",
+            "module_name": "她自己",
+            "hint": "先看懂一条：图片说出内容、文本给摘要、文档给基本信息；收下/发出前先做",
+            "args": {"id": "仓库条目的 id 或文件名"},
+            "method": "POST",
+            "url": "",
+            "builtin": "warehouse_inspect",
+            "max_seconds": 130.0,
+        },
+        "warehouse_keep": {
+            "name": "warehouse_keep",
+            "module": "self",
+            "module_name": "她自己",
+            "hint": "看完觉得值得留，就复制进自己的收藏，并记一笔“为什么留”",
+            "args": {"id": "仓库条目的 id 或文件名", "title": "你给它起的名字?",
+                     "desc": "它是什么?", "why": "为什么留?", "tags": "标签数组?"},
+            "method": "POST",
+            "url": "",
+            "builtin": "warehouse_keep",
+            "max_seconds": 15.0,
         },
         "warehouse_read": {
             "name": "warehouse_read",
@@ -147,6 +183,17 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
             "url": "",
             "builtin": "warehouse_read",
             "max_seconds": 20.0,
+        },
+        "warehouse_forget": {
+            "name": "warehouse_forget",
+            "module": "self",
+            "module_name": "她自己",
+            "hint": "把收藏里的某一条删掉（只删收藏，不删记忆）",
+            "args": {"id": "仓库条目的 id 或文件名"},
+            "method": "POST",
+            "url": "",
+            "builtin": "warehouse_forget",
+            "max_seconds": 10.0,
         },
         "see_image": {
             "name": "see_image",
@@ -163,7 +210,7 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
             "name": "send_media",
             "module": "self",
             "module_name": "她自己",
-            "hint": "从仓库挑一张图或一个文件发到聊天里（不是生成新图）",
+            "hint": "从收藏里挑一张图或一个文件发到聊天；必须先 warehouse_inspect 看过",
             "args": {"id": "仓库条目的 id 或文件名", "caption": "可选：附一句话"},
             "method": "POST",
             "url": "",
@@ -383,17 +430,94 @@ async def _call_impl(name: str, args: Dict[str, Any], session: str = "") -> Dict
             })
         return {"ok": True, "tool": name,
                 "result": {"ok": True, "count": len(rows), "modules": rows}}
-    if builtin == "warehouse_list":
+    if builtin in ("warehouse_list", "warehouse_search"):
         from . import warehouse
 
+        lib = str(args.get("library") or "").strip() or None
         try:
             rows = warehouse.list_items(kind=str(args.get("kind") or ""),
-                                        query=str(args.get("query") or "")
-                                        or str(args.get("q") or ""))
+                                        query=str(args.get("query") or args.get("q") or ""),
+                                        library=lib)
         except (OSError, ValueError) as e:
             return {"ok": False, "tool": name, "error": f"{type(e).__name__}: {e}"}
         return {"ok": True, "tool": name,
                 "result": {"ok": True, "count": len(rows), "items": rows[:60]}}
+    if builtin == "warehouse_inspect":
+        from . import warehouse
+
+        ref = str(args.get("id") or args.get("name") or args.get("ref") or "")
+        row = warehouse.resolve(ref)
+        if not row or not row.get("path"):
+            return {"ok": False, "tool": name, "error": "仓库里没有这一条"}
+        if not warehouse.is_inside(row["path"]):
+            return {"ok": False, "tool": name, "error": "这个文件不在仓库里"}
+        ext = str(row.get("ext") or "").lower()
+        desc, preview, readable = "", "", False
+        try:
+            if str(row.get("kind")) == "image":
+                from . import llm_box
+
+                desc = await llm_box.describe_image(
+                    str(row["path"]),
+                    "描述这张图：画面里有什么、气氛/风格、有没有文字；两三句，具体一点。")
+                preview, readable = desc[:300], True
+            elif ext in warehouse.TEXT_EXTS:
+                data = warehouse.read_text(str(row["id"]))
+                text = str(data.get("text") or "")
+                desc = text.strip().splitlines()[0][:160] if text.strip() else "空文本"
+                preview, readable = text[:400], True
+            else:
+                desc = f"{row.get('kind')} {ext}，{int(row.get('bytes') or 0) // 1024} KB；这一类只存不读正文"
+        except (OSError, ValueError, TypeError, RuntimeError) as e:
+            return {"ok": False, "tool": name, "error": f"{type(e).__name__}: {e}"}
+        try:
+            meta = warehouse.update_meta(str(row["id"]), desc=desc, preview=preview,
+                                         readable=readable, inspected_at=time.time())
+        except ValueError as e:
+            return {"ok": False, "tool": name, "error": str(e)}
+        return {"ok": True, "tool": name,
+                "result": {"ok": True, **meta}}
+    if builtin == "warehouse_keep":
+        from . import memory_box, warehouse
+
+        ref = str(args.get("id") or args.get("name") or args.get("ref") or "")
+        row = warehouse.resolve(ref)
+        if not row:
+            return {"ok": False, "tool": name, "error": "仓库里没有这一条"}
+        if not row.get("inspected_at"):
+            return {"ok": False, "tool": name,
+                    "error": "先用 warehouse_inspect 看过，再决定留不留"}
+        title = str(args.get("title") or "").strip()[:80]
+        desc = str(args.get("desc") or "").strip()[:400]
+        why = str(args.get("why") or "").strip()[:300]
+        raw_tags = args.get("tags") or []
+        tags = [str(t).strip()[:24] for t in raw_tags if str(t).strip()][:8] \
+            if isinstance(raw_tags, list) else []
+        try:
+            kept = warehouse.keep(str(row["id"]), title=title, desc=desc, why=why, tags=tags)
+        except ValueError as e:
+            return {"ok": False, "tool": name, "error": str(e)}
+        text = (f"我收下了一件东西《{kept.get('title') or kept.get('name')}》："
+                f"{kept.get('desc') or '（还没写是什么）'}。"
+                f"为什么留着：{why or '（还没写）'}。（收藏 {kept.get('id')}）")
+        try:
+            note = memory_box.add_note(text, scope="owner", program="program_web")
+            warehouse.update_meta(str(kept["id"]), memory_id=str(note.get("id") or ""))
+        except (OSError, ValueError) as e:
+            S.log(f"[warehouse] keep memory failed: {e!r}")
+        return {"ok": True, "tool": name,
+                "result": {"ok": True, "kept": kept, "memory": text}}
+    if builtin == "warehouse_forget":
+        from . import warehouse
+
+        ref = str(args.get("id") or args.get("name") or args.get("ref") or "")
+        row = warehouse.resolve(ref)
+        if not row:
+            return {"ok": False, "tool": name, "error": "仓库里没有这一条"}
+        if row.get("library") != warehouse.AGENT_LIB:
+            return {"ok": False, "tool": name, "error": "只能删自己收着的东西"}
+        return {"ok": True, "tool": name,
+                "result": {"ok": warehouse.remove(str(row["id"])), "id": row["id"]}}
     if builtin in ("warehouse_read", "see_image", "send_media"):
         from . import warehouse
 
@@ -421,15 +545,24 @@ async def _call_impl(name: str, args: Dict[str, Any], session: str = "") -> Dict
                     str(row["path"]),
                     str(args.get("question") or args.get("q") or "描述这张图，先说看到什么，再回答对方可能关心的点。"),
                 )
-            except Exception as e:  # noqa: BLE001
+            except (OSError, ValueError, TypeError, RuntimeError) as e:
                 return {"ok": False, "tool": name, "error": f"{type(e).__name__}: {e}"}
+            try:
+                warehouse.update_meta(str(row["id"]), desc=text[:400], preview=text[:300],
+                                      readable=True, inspected_at=time.time())
+            except ValueError:
+                pass
             return {"ok": True, "tool": name,
                     "result": {"ok": True, "id": row["id"], "name": row["name"], "text": text}}
+        if not row.get("inspected_at"):
+            return {"ok": False, "tool": name,
+                    "error": "先 warehouse_inspect 看过，确认它是什么再发"}
         caption = str(args.get("caption") or "").strip()[:200]
         queue_media(session, {**row, "caption": caption})
         return {"ok": True, "tool": name,
                 "result": {"ok": True, "queued": True, "id": row["id"], "name": row["name"],
-                           "kind": row.get("kind"), "caption": caption}}
+                           "kind": row.get("kind"), "caption": caption,
+                           "desc": row.get("desc") or ""}}
     if builtin == "avatar_see":
         started = time.time()
         try:

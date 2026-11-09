@@ -272,6 +272,14 @@ def build_system(session: str, query: str) -> str:
     if mem:
         blocks.append(mem)
     try:
+        from . import warehouse
+
+        wh = warehouse.fragment(query)
+        if wh:
+            blocks.append(wh)
+    except (OSError, ValueError, ImportError) as e:
+        S.log(f"[warehouse] prompt failed: {e!r}")
+    try:
         drift = persona_drift.fragment()
         if drift:
             blocks.append(drift)

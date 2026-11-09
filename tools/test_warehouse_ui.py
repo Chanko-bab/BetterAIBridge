@@ -19,6 +19,8 @@ from PySide6.QtWidgets import QApplication, QLabel  # noqa: E402
 
 from app.ui.pages.chat import ChatPage  # noqa: E402
 from app.ui.widgets.media_bubble import MediaBubble  # noqa: E402
+from app.ui.dialogs.warehouse_dialog import WarehouseDialog  # noqa: E402
+from app.services import warehouse as warehouse_svc  # noqa: E402
 
 fails: list[str] = []
 
@@ -74,6 +76,20 @@ def main() -> int:
     b = MediaBubble(gone, "", "her")
     check(b.objectName() == "MediaBubbleHer", "对方的附件在左侧样式")
     check(any("不在仓库" in x for x in labels(b)), "文件缺失时写明不在仓库")
+
+    old_ent = warehouse_svc._w.ENTITY
+    wh_tmp = tmp / "wh"
+    warehouse_svc._w.ENTITY = wh_tmp / "WiseEntity" / "entity"
+    try:
+        warehouse_svc.put_bytes("owner", "猫.png", img.read_bytes())
+        dlg = WarehouseDialog()
+        check(dlg.table.rowCount() == 1, "仓库查看器列出条目")
+        check(dlg.cb_lib.count() >= 2 and "全部库" in dlg.cb_lib.itemText(0),
+              "库筛选含全部库")
+        check("仓库" in dlg.windowTitle(), "窗口标题是仓库")
+        dlg.close()
+    finally:
+        warehouse_svc._w.ENTITY = old_ent
 
     page.close()
     print(f"\n{'ALL PASS' if not fails else 'FAILED ' + str(len(fails))}")
