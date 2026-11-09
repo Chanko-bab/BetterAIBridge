@@ -1066,6 +1066,15 @@ def main() -> int:
         check(ap is not None and ap.cb_bg_source.count() == 3
               and hasattr(ap, "btn_bg_media"),
               "外观页应有底图：动态效果/图片/视频")
+        if ap is not None:
+            ap.cb_bg_source.blockSignals(True)
+            ap.cb_bg_source.setCurrentIndex(1)
+            ap._sync_media_row()
+            check(ap.btn_bg_media.text() == "打开图库…",
+                  "图片底图应从内部库选")
+            ap.cb_bg_source.setCurrentIndex(0)
+            ap._sync_media_row()
+            ap.cb_bg_source.blockSignals(False)
         check(hasattr(win, "backdrop") and win.backdrop is not None
               and hasattr(win, "main_stage"),
               "主窗口应把背景铺在所有页面下面")

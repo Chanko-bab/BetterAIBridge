@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 from ..widgets.see_through import see_through, see_through_widget
 from ...core import config
 from .. import fonts
+from ..dialogs.background_library import BackgroundLibraryDialog
 from ..backdrop import SOURCES, Backdrop, cfg as bg_cfg, save as bg_save
 
 EFFECT_LABELS = [("gradient", "呼吸渐变"), ("blobs", "漂浮光斑"), ("dots", "点阵")]
@@ -243,6 +244,7 @@ class AppearancePage(QWidget):
     def _sync_media_row(self) -> None:
         source = str(self.cb_bg_source.currentData() or "effects")
         dynamic = source == "effects"
+        self.btn_bg_media.setText("打开图库…" if source == "image" else "选择文件…")
         self.btn_bg_media.setEnabled(not dynamic)
         self.btn_bg_default.setEnabled(source == "image")
         self.ed_bg_media.setEnabled(not dynamic)
@@ -259,9 +261,23 @@ class AppearancePage(QWidget):
         source = str(self.cb_bg_source.currentData() or "effects")
         if source == "effects":
             return
-        flt = IMAGE_FILTER if source == "image" else VIDEO_FILTER
-        title = "选一张背景图片" if source == "image" else "选一段背景视频"
-        path, _ = QFileDialog.getOpenFileName(self, title, "", flt)
+        if source == "image":
+            dlg = BackgroundLibraryDialog(
+                self, current=str(self.ed_bg_media.text() or "").strip())
+            accepted = dlg.exec()
+            if dlg.deleted_current() and not dlg.chosen_path():
+                self.ed_bg_media.clear()
+                self._save_bg()
+                return
+            if not accepted:
+                return
+            path = dlg.chosen_path()
+            if path:
+                self.ed_bg_media.setText(path)
+                self._save_bg()
+            return
+        path, _ = QFileDialog.getOpenFileName(
+            self, "选一段背景视频", "", VIDEO_FILTER)
         if not path:
             return
         self.ed_bg_media.setText(path)
