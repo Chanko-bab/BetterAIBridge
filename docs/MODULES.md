@@ -322,13 +322,13 @@ modules/index.json
 
 ```json
 {
-  "id": "weather_cn", "name": "天气", "version": "0.1.0",
+  "id": "weather_cn", "name": "天气", "version": "0.6.6",
   "author": "你的名字", "homepage": "https://github.com/you/bab-weather",
   "kind": "bridge", "summary": "查中国天气：今天、明天、未来三天"
 }
 ```
 
-- `version`：语义化版本，改行为就往上加；内核读的是清单里的值，服务自己不用再写死（参考上网桥的 `_detect_version()`）。
+- `version`：从启动器 0.6.6 起，**模组版本号与它对应的启动器版本号一致**（启动器 0.6.6 → 模组写 `0.6.6`）。模组自己的改动写进 `introduce.md` 的变更记录，不再另起一套 0.4.x/0.7.x；这样用户看到模组版本就知道该配哪个启动器，装错会直接跑不起来。历史包（M 0.4.2、pre 0.2.5、Bili 0.7.7）保留原号，下一次发布时统一。
 - `author`：写一个人能认出来的名字，卡片和以后的模组市场都取这个字段。
 - `homepage`：没有就省略，别填假地址。
 - 市场索引 `modules/index.json` 里的条目也带 `author`，和清单保持一致即可，不要求额外维护第二份。
