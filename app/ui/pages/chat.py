@@ -10,16 +10,17 @@ import os
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt, QTimer, Signal, QVariantAnimation
 from PySide6.QtGui import QFont, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
-    QButtonGroup, QCheckBox, QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel,
+    QButtonGroup, QCheckBox, QFileDialog, QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel,
     QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget,
 )
 
 from ...core import config, framework_setup, logger
 from ...services import worker as worker_mod
-from ...services import audio, recorder as recorder_mod, speech_time, voice_store
+from ...services import audio, recorder as recorder_mod, speech_time, voice_store, warehouse
 from ...services.core_client import CoreClient
 from ...services.worker import run_async
 from .. import action_text, fonts
+from ..widgets.media_bubble import MediaBubble
 from ..widgets.nanny_panel import NannyPanel
 from ..widgets.voice_bubble import VoiceBubble
 from .chat_nanny import ChatNannyMixin
@@ -104,6 +105,7 @@ class ChatPage(ChatNannyMixin, QWidget):
         self._poll_busy = False
         self._last_me = ""
         self._pending = False
+        self._attach = None
         self._voice_busy = False
         self._rec = recorder_mod.Recorder()
         self._rec_ready = False
@@ -218,7 +220,29 @@ class ChatPage(ChatNannyMixin, QWidget):
         self.rec_bar.hide()
         outer.addWidget(self.rec_bar)
 
+        self.media_bar = QFrame(objectName="MediaBar")
+        mb = QHBoxLayout(self.media_bar)
+        mb.setContentsMargins(fonts.ui_px(10), fonts.ui_px(4),
+                              fonts.ui_px(8), fonts.ui_px(4))
+        mb.setSpacing(fonts.ui_px(8))
+        self.media_label = QLabel("", objectName="MediaName")
+        self.media_label.setWordWrap(False)
+        mb.addWidget(self.media_label, 1)
+        self.media_clear = QPushButton("✕", objectName="Ghost")
+        self.media_clear.setFixedSize(fonts.ui_px(24), fonts.ui_px(24))
+        self.media_clear.setToolTip("不发了")
+        self.media_clear.clicked.connect(self._clear_attachment)
+        mb.addWidget(self.media_clear)
+        self.media_bar.hide()
+        outer.addWidget(self.media_bar)
+
         row = QHBoxLayout()
+        self.btn_file = QPushButton("📎", objectName="AttachButton")
+        self.btn_file.setFixedSize(fonts.ui_px(40), fonts.ui_px(40))
+        self.btn_file.setCursor(Qt.PointingHandCursor)
+        self.btn_file.setToolTip("发一张图或一个文件（视频暂不支持）")
+        self.btn_file.setAccessibleName("添加附件")
+        self.btn_file.clicked.connect(self._pick_attachment)
         self.btn_mic = QPushButton("🎤", objectName="MicButton")
         self.btn_mic.setFixedSize(fonts.ui_px(40), fonts.ui_px(40))
         self.btn_mic.setCursor(Qt.PointingHandCursor)
@@ -233,6 +257,7 @@ class ChatPage(ChatNannyMixin, QWidget):
         self.btn_send.setAccessibleName("发送消息")
         self.btn_send.setToolTip("发送（Enter）")
         self.btn_send.clicked.connect(self.send)
+        row.addWidget(self.btn_file)
         row.addWidget(self.btn_mic)
         row.addWidget(self.input, 1)
         row.addWidget(self.btn_send)
@@ -413,11 +438,43 @@ class ChatPage(ChatNannyMixin, QWidget):
                   on_err=lambda e: self.typing.setText(f"状态没改成功：{e}"))
 
     # ---------- 发送 ----------
+    def _pick_attachment(self) -> None:
+        if self._pending:
+            return
+        path, _ = QFileDialog.getOpenFileName(
+            self, "发一张图或一个文件", str(Path.home()),
+            "图片与文件 (*.png *.jpg *.jpeg *.bmp *.webp *.gif *.pdf *.doc *.docx "
+            "*.txt *.md *.csv *.xls *.xlsx *.ppt *.pptx *.zip *.7z *.rar);;所有文件 (*.*)")
+        if not path:
+            return
+        if Path(path).suffix.lower() in (".mp4", ".mov", ".avi", ".mkv", ".webm"):
+            self.typing.setText("视频暂时还不支持；图片和文件可以。")
+            QTimer.singleShot(4000, lambda: self.typing.setText("") if not self._pending else None)
+            return
+        try:
+            row = warehouse.import_file(path)
+        except (OSError, ValueError) as e:
+            self.typing.setText(f"没放进仓库：{e}")
+            QTimer.singleShot(4500, lambda: self.typing.setText("") if not self._pending else None)
+            return
+        self._attach = row
+        size = int(row.get("bytes") or 0)
+        human = f"{size / 1024 / 1024:.1f} MB" if size >= 1024 * 1024 else f"{max(1, size // 1024)} KB"
+        self.media_label.setText(f"{'图片' if row.get('kind') == 'image' else '文件'}："
+                                 f"{row.get('name')}（{human}）")
+        self.media_bar.show()
+        self.input.setFocus()
+
+    def _clear_attachment(self) -> None:
+        self._attach = None
+        self.media_bar.hide()
+
     def send(self) -> None:
         if self._pending:
             return
         text = self.input.text().strip()
-        if not text:
+        media = self._attach
+        if not text and not media:
             return
         if text.strip().lower() == "/wake up bab_nanny":
             self.input.clear()
@@ -426,7 +483,12 @@ class ChatPage(ChatNannyMixin, QWidget):
         # 她还在念、而且后面还有话没出口：掐掉声音，那几句算没说；只念一句就随它念完
         self._interrupt_speech()
         self.input.clear()
-        self.bubble("me", text)
+        if media:
+            self.media_bubble("me", media, text)
+            self._attach = None
+            self.media_bar.hide()
+        else:
+            self.bubble("me", text)
         self._last_me = text
         self._pending_echo += 1
         self._pending = True
@@ -435,10 +497,24 @@ class ChatPage(ChatNannyMixin, QWidget):
         self._dot.start(380)
         self.typing.setText(f"{framework_setup.display_name()}正在输入")
 
-        run_async(lambda: CoreClient().chat(text, session=self.session), on_ok=self._on_ok,
-                  on_err=self._on_err)
+        run_async(lambda: CoreClient().chat(text, session=self.session, media=media),
+                  on_ok=self._on_ok, on_err=self._on_err)
 
     # ---------- 语音消息 ----------
+    def media_bubble(self, who: str, media: dict, text: str = "") -> None:
+        """画一条仓库附件气泡：图片缩略图或文件名，点开用系统程序看。"""
+        w = MediaBubble(media, text, who)
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        if who == "me":
+            row.addStretch(1)
+            row.addWidget(w)
+        else:
+            row.addWidget(w)
+            row.addStretch(1)
+        self._add_row(row)
+        self._request_scroll()
+
     def voice_bubble(self, who: str, voice: dict, text: str = "") -> None:
         """画一条音频气泡；转写默认收起。"""
         w = VoiceBubble(voice, text, who)
@@ -1037,24 +1113,30 @@ class ChatPage(ChatNannyMixin, QWidget):
                 role = t.get("role")
                 text = str(t.get("text") or "").strip()
                 voice = t.get("voice") or None
-                if not text and not voice:
+                media = t.get("media") or None
+                if not text and not voice and not media:
                     continue
                 if role == "user":
                     if self._pending_echo > 0:
                         self._pending_echo -= 1
                         continue
-                    if voice:
+                    if media:
+                        self.media_bubble("me", media, text)
+                    elif voice:
                         self.voice_bubble("me", voice, text)
                     else:
                         self.bubble("me", text)
                 else:
                     # 主动说话就是她说了一句，不加任何标签：聊天界面只放对话本身。
                     # 「她/对方在找您」这种提醒属于保姆栏（而且只在忙碌/离开时才提示）。
-                    self.bubble("her", text)
+                    if media:
+                        self.media_bubble("her", media, text)
+                    if text:
+                        self.bubble("her", text)
                     # 主动说的话也要念出来：以前只有点发送后的回复走朗读链，
                     # feed 里冒出来的这句被静音了（内测反馈的 bug）。
                     # 首次打开会补最近 20 条历史，那时候不念，免得一开窗就念一串旧话。
-                    if self.speak.isChecked() and req_cursor > 0:
+                    if text and self.speak.isChecked() and req_cursor > 0:
                         self._say(text)
             if total >= self._cursor:
                 self._cursor = total

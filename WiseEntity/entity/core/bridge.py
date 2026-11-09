@@ -553,6 +553,68 @@ def _project_apply(mid: str, ops: Any = None, reason: str = "", **_ignored: Any)
                        timeout=200.0)
 
 
+def _wh_source(mid: str) -> str:
+    return f"module:{mid}"
+
+
+def _wh_put(mid: str, name: str = "", base64: str = "", path: str = "",
+            kind: str = "", **_ignored: Any) -> Dict[str, Any]:
+    """模组往自己的 external 格里放一个文件：base64 或安装目录内路径。"""
+    from . import warehouse
+
+    raw: bytes
+    if str(base64 or "").strip():
+        import base64 as _b64
+
+        try:
+            raw = _b64.b64decode(str(base64).split(",")[-1], validate=False)
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(400, f"base64 不合法：{e}") from e
+    elif str(path or "").strip():
+        src = Path(str(path).strip())
+        if not src.is_file() or not str(src.resolve()).startswith(str(S.APP_ROOT.resolve())):
+            raise HTTPException(400, "只能放安装目录里的文件，或直接给 base64")
+        raw = src.read_bytes()
+    else:
+        raise HTTPException(400, "base64 或 path 给一个")
+    if not str(name or "").strip():
+        raise HTTPException(400, "缺少文件名")
+    try:
+        row = warehouse.put_bytes(_wh_source(mid), str(name).strip(), raw, kind=str(kind or ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return {"ok": True, **row}
+
+
+def _wh_list(mid: str, kind: str = "", query: str = "", **_ignored: Any) -> Dict[str, Any]:
+    from . import warehouse
+
+    rows = warehouse.list_items(source=_wh_source(mid), kind=str(kind or ""),
+                                query=str(query or ""))
+    return {"ok": True, "count": len(rows), "items": rows[:80]}
+
+
+def _wh_read(mid: str, id: str = "", **_ignored: Any) -> Dict[str, Any]:
+    from . import warehouse
+
+    row = warehouse.resolve(str(id or ""), source=_wh_source(mid))
+    if not row:
+        raise HTTPException(404, "你的仓库里没有这一条")
+    try:
+        return warehouse.read_text(str(row["id"]))
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+
+def _wh_mkdir(mid: str, name: str = "", **_ignored: Any) -> Dict[str, Any]:
+    from . import warehouse
+
+    try:
+        return warehouse.mkdir(_wh_source(mid), str(name or ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+
 async def _voice_message(mid: str, path: str = "", audio: str = "", duration_ms: int = 0,
                    keep: bool = True, session: str = "web:owner", **_ignored: Any):
     """模组提交一段语音：和主人按住说话走同一条路（转写 + 音频气泡 + 中性提示）。"""
@@ -695,6 +757,26 @@ CAPS: Dict[str, Dict[str, Any]] = {
         "desc": "弹一条启动器通知（托盘气泡），不进聊天、不进保姆栏；最多 240 字",
         "args": {"text": "string", "title": "string?", "level": "info|warn?"},
         "fn": lambda mid, a: _ui_notify(mid, **a),
+    },
+    "warehouse.put": {
+        "desc": "往你自己的仓库格放一个文件（图片/文档/文件），只能碰 external/<你的 id>",
+        "args": {"name": "string", "base64": "string?", "path": "string（安装目录内）?", "kind": "image|document|file?"},
+        "fn": lambda mid, a: _wh_put(mid, **a),
+    },
+    "warehouse.list": {
+        "desc": "列你自己仓库格里的文件；看不到主人的 internal，也看不到别的模组",
+        "args": {"kind": "image|document|file?", "query": "按文件名找?"},
+        "fn": lambda mid, a: _wh_list(mid, **a),
+    },
+    "warehouse.read": {
+        "desc": "读你自己仓库格里一个文本文件；PDF/DOCX 只存不读",
+        "args": {"id": "仓库条目 id 或文件名"},
+        "fn": lambda mid, a: _wh_read(mid, **a),
+    },
+    "warehouse.mkdir": {
+        "desc": "在你自己的仓库格里建一个子目录",
+        "args": {"name": "string"},
+        "fn": lambda mid, a: _wh_mkdir(mid, **a),
     },
     "voice.message": {
         "desc": "把一段 5–90 秒的语音发进主人的聊天框（自动转写，以可播放的音频气泡出现）",

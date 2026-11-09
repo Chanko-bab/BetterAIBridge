@@ -414,6 +414,6 @@ async def chat(session: str, query: str, history: list[dict] | None = None,
             return cleaned or "（我这边工具还没回话，稍等一下我再试。）"
         rounds += 1
         S.log(f"[tool] 调用 {call['name']} args={str(call['args'])[:160]}")
-        one = await tool_bus.call(str(call["name"]), dict(call["args"]))
+        one = await tool_bus.call(str(call["name"]), dict(call["args"]), session=session)
         msgs.append({"role": "assistant", "content": content})
         msgs.append({"role": "user", "content": tool_bus.feedback(one)})

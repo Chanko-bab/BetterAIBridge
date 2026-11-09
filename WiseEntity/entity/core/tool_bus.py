@@ -17,6 +17,7 @@ import asyncio
 import json
 import re
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import httpx
@@ -110,7 +111,7 @@ def _build() -> Dict[str, Dict[str, Any]]:
 
 
 def _builtin_tools() -> Dict[str, Dict[str, Any]]:
-    """内核自己给的工具（不依赖模组）：头像，以及她自己的眼睛。"""
+    """内核自己给的工具（不依赖模组）：头像、眼睛、仓库。"""
     from . import sense
 
     out: Dict[str, Dict[str, Any]] = {
@@ -124,6 +125,50 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
             "url": "",
             "builtin": "module_status",
             "max_seconds": 5.0,
+        },
+        "warehouse_list": {
+            "name": "warehouse_list",
+            "module": "self",
+            "module_name": "她自己",
+            "hint": "看看仓库里有什么：主人发来的图片/文件、你自己存的东西，都能列",
+            "args": {"kind": "image|document|file?", "query": "按文件名找?"},
+            "method": "POST",
+            "url": "",
+            "builtin": "warehouse_list",
+            "max_seconds": 5.0,
+        },
+        "warehouse_read": {
+            "name": "warehouse_read",
+            "module": "self",
+            "module_name": "她自己",
+            "hint": "读仓库里一个文本文件（txt/md/csv/json 等）；PDF/DOCX 只存不读",
+            "args": {"id": "仓库条目的 id 或文件名"},
+            "method": "POST",
+            "url": "",
+            "builtin": "warehouse_read",
+            "max_seconds": 20.0,
+        },
+        "see_image": {
+            "name": "see_image",
+            "module": "self",
+            "module_name": "她自己",
+            "hint": "看仓库里的一张图，并说出你看到了什么（可以用它回答对方）",
+            "args": {"id": "仓库条目的 id 或文件名", "question": "可选：你想在画面里找什么"},
+            "method": "POST",
+            "url": "",
+            "builtin": "see_image",
+            "max_seconds": 130.0,
+        },
+        "send_media": {
+            "name": "send_media",
+            "module": "self",
+            "module_name": "她自己",
+            "hint": "从仓库挑一张图或一个文件发到聊天里（不是生成新图）",
+            "args": {"id": "仓库条目的 id 或文件名", "caption": "可选：附一句话"},
+            "method": "POST",
+            "url": "",
+            "builtin": "send_media",
+            "max_seconds": 10.0,
         },
         "avatar_see": {
             "name": "avatar_see",
@@ -150,6 +195,21 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
             "max_seconds": 130.0,
         }
     return out
+
+_MEDIA: Dict[str, list] = {}
+
+
+def queue_media(session: str, item: Dict[str, Any]) -> None:
+    """记录她这一轮要发到聊天里的仓库文件，reply() 收尾时落成 assistant 轮。"""
+    key = str(session or "web:owner")
+    bucket = _MEDIA.setdefault(key, [])
+    if len(bucket) < 4:
+        bucket.append(dict(item))
+
+
+def take_media(session: str) -> list:
+    return _MEDIA.pop(str(session or "web:owner"), [])
+
 
 def tools() -> Dict[str, Dict[str, Any]]:
     now = time.time()
@@ -286,7 +346,7 @@ def _short(data: Any) -> str:
     return s
 
 
-async def _call_impl(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+async def _call_impl(name: str, args: Dict[str, Any], session: str = "") -> Dict[str, Any]:
     items = tools()
     spec = items.get(name)
     if not spec:
@@ -323,6 +383,53 @@ async def _call_impl(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
             })
         return {"ok": True, "tool": name,
                 "result": {"ok": True, "count": len(rows), "modules": rows}}
+    if builtin == "warehouse_list":
+        from . import warehouse
+
+        try:
+            rows = warehouse.list_items(kind=str(args.get("kind") or ""),
+                                        query=str(args.get("query") or "")
+                                        or str(args.get("q") or ""))
+        except (OSError, ValueError) as e:
+            return {"ok": False, "tool": name, "error": f"{type(e).__name__}: {e}"}
+        return {"ok": True, "tool": name,
+                "result": {"ok": True, "count": len(rows), "items": rows[:60]}}
+    if builtin in ("warehouse_read", "see_image", "send_media"):
+        from . import warehouse
+
+        ref = str(args.get("id") or args.get("name") or args.get("ref") or "")
+        row = warehouse.resolve(ref)
+        if not row or not row.get("path"):
+            return {"ok": False, "tool": name, "error": "仓库里没有这一条"}
+        if not warehouse.is_inside(row["path"]):
+            return {"ok": False, "tool": name, "error": "这个文件不在仓库里"}
+        if builtin == "warehouse_read":
+            try:
+                data = warehouse.read_text(str(row["id"]))
+            except ValueError as e:
+                return {"ok": False, "tool": name, "error": str(e)}
+            return {"ok": True, "tool": name, "result": data}
+        if not Path(str(row["path"])).is_file():
+            return {"ok": False, "tool": name, "error": "文件已经不在仓库里了"}
+        if builtin == "see_image":
+            if str(row.get("kind") or "") != "image":
+                return {"ok": False, "tool": name, "error": "这一条不是图片"}
+            try:
+                from . import llm_box
+
+                text = await llm_box.describe_image(
+                    str(row["path"]),
+                    str(args.get("question") or args.get("q") or "描述这张图，先说看到什么，再回答对方可能关心的点。"),
+                )
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "tool": name, "error": f"{type(e).__name__}: {e}"}
+            return {"ok": True, "tool": name,
+                    "result": {"ok": True, "id": row["id"], "name": row["name"], "text": text}}
+        caption = str(args.get("caption") or "").strip()[:200]
+        queue_media(session, {**row, "caption": caption})
+        return {"ok": True, "tool": name,
+                "result": {"ok": True, "queued": True, "id": row["id"], "name": row["name"],
+                           "kind": row.get("kind"), "caption": caption}}
     if builtin == "avatar_see":
         started = time.time()
         try:
@@ -369,9 +476,9 @@ async def _call_impl(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         return {"ok": False, "error": f"{type(e).__name__}: {e}", "ms": ms}
 
 
-async def call(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+async def call(name: str, args: Dict[str, Any], session: str = "") -> Dict[str, Any]:
     """所有工具调用都从这里过：先执行，再把真实结果写进她的能力证据。"""
-    one = await _call_impl(name, args)
+    one = await _call_impl(name, args, session=session)
     try:
         from . import self_store
         self_store.record_tool(str(name), dict(args or {}), one)

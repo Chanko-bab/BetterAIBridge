@@ -224,3 +224,30 @@ QListWidget#BgLibList::item {
 }
 QListWidget#BgLibList::item:hover { background: #f2f6fd; }
 QListWidget#BgLibList::item:selected { background: #e8f0fe; color: #1b2a4a; }
+
+/* 聊天附件 */
+QPushButton#AttachButton {
+    background: transparent;
+    border: 1px solid #dbe3ef;
+    border-radius: 10px;
+    padding: 0;
+    font-size: 16px;
+    color: #4a5670;
+}
+QPushButton#AttachButton:hover { background: #f2f6fd; border-color: #c9d6ea; }
+QPushButton#AttachButton:pressed { background: #e4edfd; }
+
+QFrame#MediaBar {
+    background: #eef4ff;
+    border: 1px solid #d7e2f5;
+    border-radius: 9px;
+}
+QFrame#MediaBar QLabel { color: #33415c; font-size: 12px; }
+
+QFrame#MediaBubbleMe, QFrame#MediaBubbleHer { border-radius: 12px; }
+QFrame#MediaBubbleMe { background: #dce9ff; border: 1px solid #c9dbff; }
+QFrame#MediaBubbleHer { background: #ffffff; border: 1px solid #e4ebf5; }
+QLabel#MediaName { color: #1b2a4a; font-weight: 600; }
+QLabel#MediaMeta { color: #6b7a93; font-size: 11px; }
+QLabel#MediaCaption { color: #33415c; font-size: 12px; }
+QLabel#MediaIcon { font-size: 16px; }

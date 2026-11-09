@@ -40,7 +40,7 @@ def _wire(replies: list[str]) -> dict:
         state["n"] += 1
         return replies[i]
 
-    async def fake_call(name, args):
+    async def fake_call(name, args, session=""):
         state["calls"] += 1
         return {"ok": True, "tool": name, "ms": 1, "result": {"ok": True, "title": "Example"}}
 

@@ -74,7 +74,7 @@ def main() -> int:
         check(self_store.self_text() == old, "被拒后旧档案不被覆盖")
 
         # tool_bus 包装：真实结果写进证据
-        async def fake_impl(name, args):
+        async def fake_impl(name, args, session=""):
             return {"ok": True, "tool": name, "result": {"text": "看到书桌"}}
 
         tool_bus._call_impl = fake_impl

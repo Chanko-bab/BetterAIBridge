@@ -66,6 +66,7 @@ class ChatIn(BaseModel):
     sender_name: str = ""
     is_owner: bool | None = None
     voice: dict | None = None
+    media: dict | None = None
 
 
 class EventIn(BaseModel):
@@ -501,17 +502,40 @@ def _ensure_configured() -> None:
         raise HTTPException(status_code=503, detail="还没配置：" + hint)
 
 
+def _chat_media(raw: dict | None) -> dict | None:
+    """校验聊天里带过来的仓库文件：必须是仓库内的真实文件，只信索引。"""
+    if not raw:
+        return None
+    from pathlib import Path
+
+    from . import warehouse
+
+    path = str(raw.get("path") or "").strip()
+    if not path or not warehouse.is_inside(path):
+        raise HTTPException(400, "附件必须来自 BAB 仓库")
+    p = Path(path)
+    if not p.is_file():
+        raise HTTPException(404, "附件已经不在仓库里了")
+    row = warehouse.find_by_path(path)
+    if not row:
+        raise HTTPException(400, "附件没有仓库索引，请重新导入")
+    return row
+
+
 @app.post("/chat")
 async def chat(inp: ChatIn):
-    if not inp.text.strip() and not inp.voice:
+    media = _chat_media(inp.media)
+    if not inp.text.strip() and not inp.voice and not media:
         raise HTTPException(400, "empty text")
     _ensure_configured()
     before = emotion_core.mood_word()
     await _emit("message.in", {"session": inp.session, "text": inp.text[:500],
                                "is_owner": bool(inp.is_owner),
-                               "voice": bool(inp.voice)})
+                               "voice": bool(inp.voice),
+                               "media": bool(media)})
     out = await chat_core.reply(inp.session, inp.text, is_owner=inp.is_owner,
-                                sender_name=inp.sender_name, voice=inp.voice)
+                                sender_name=inp.sender_name, voice=inp.voice,
+                                media=media)
     await _emit("message.out", {"session": inp.session,
                                 "text": str(out.get("reply") or "")[:500],
                                 "messages": out.get("messages") or []})
