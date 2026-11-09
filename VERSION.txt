@@ -1,1 +1,1 @@
-BetterAIBridge 0.6.6
+BetterAIBridge 0.6.5
