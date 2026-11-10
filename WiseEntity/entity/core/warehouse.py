@@ -94,6 +94,7 @@ def _read_libs() -> Dict[str, Dict[str, Any]]:
 
 def _write_libs(libs: Dict[str, Dict[str, Any]]) -> None:
     p = _libs_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(libs, ensure_ascii=False, indent=2), encoding="utf-8")
     os.replace(tmp, p)

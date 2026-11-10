@@ -146,6 +146,25 @@ def main() -> int:
         except Exception:
             check(True, "没申请的库被拒绝")
 
+        # 全新根：模组在 module.json 里声明库，但 warehouse/ 还不存在
+        fresh = Path(tempfile.mkdtemp(prefix="bab_wh_fresh_"))
+        old_entity = warehouse.ENTITY
+        try:
+            warehouse.ENTITY = fresh / "WiseEntity" / "entity"
+            bundle = fresh / "program_bundle" / "program_qq_bridge.pbab"
+            bundle.mkdir(parents=True)
+            (bundle / "module.json").write_text(
+                '{"id":"qq_bridge","warehouse":{"libraries":'
+                '[{"id":"media","title":"QQ 收到的图片和文件","quota_mb":512}]}}',
+                encoding="utf-8")
+            fresh_libs = {x["id"]: x for x in warehouse.module_libraries("qq_bridge")}
+            check("mod-qq_bridge-media" in fresh_libs, "全新根能建模组声明的库")
+            check((fresh / "WiseEntity" / "entity" / "warehouse" / "libraries.json").is_file(),
+                  "全新根会写 libraries.json")
+        finally:
+            warehouse.ENTITY = old_entity
+            shutil.rmtree(fresh, ignore_errors=True)
+
         tool_bus.queue_media("web:owner", {"id": "x", "name": "a.txt", "caption": "给你"})
         check(len(tool_bus.take_media("web:owner")) == 1, "待发媒体能排队")
         check(tool_bus.take_media("web:owner") == [], "取走后清空")
