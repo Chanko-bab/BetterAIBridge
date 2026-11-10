@@ -242,44 +242,44 @@ def build_system(session: str, query: str) -> str:
         home = home_box.fragment()
         if home:
             blocks.append(home)
-    except (OSError, ValueError):
-        pass
+    except (OSError, ValueError) as e:
+        S.log(f"[prompt] home 段落跳过：{e!r}")
     try:
         av = avatar.fragment()
         if av:
             blocks.append(av)
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001
+        S.log(f"[prompt] avatar 段落跳过：{e!r}")
     try:
         sn = sense.fragment()
         if sn:
             blocks.append(sn)
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001
+        S.log(f"[prompt] sense 段落跳过：{e!r}")
     try:
         st = style_box.fragment()
         if st:
             blocks.append(st)
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001
+        S.log(f"[prompt] style 段落跳过：{e!r}")
     try:
         mod_persona = modules_box.persona_text()
         if mod_persona:
             blocks.append(FRAME_ABILITY + mod_persona)
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001
+        S.log(f"[prompt] modules 段落跳过：{e!r}")
     # 7 维 flybrain 只做"体内状态"，不再往提示词里写第二套情绪；
     # 对外只认 emotion_core（有 5 档话术、能驱动 gates）。
     try:
         blocks.append(presence.fragment())
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001
+        S.log(f"[prompt] presence 段落跳过：{e!r}")
     try:
         clock = time_sense.fragment(session)
         if clock:
             blocks.append(clock)
-    except (OSError, ValueError):
-        pass
+    except (OSError, ValueError) as e:
+        S.log(f"[prompt] time_sense 段落跳过：{e!r}")
     mem = memory_box.fragment(query, session)
     if mem:
         blocks.append(mem)
@@ -295,14 +295,14 @@ def build_system(session: str, query: str) -> str:
         drift = persona_drift.fragment()
         if drift:
             blocks.append(drift)
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001
+        S.log(f"[prompt] drift 段落跳过：{e!r}")
     try:
         urge = drives.fragment()
         if urge:
             blocks.append(urge)
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001
+        S.log(f"[prompt] drives 段落跳过：{e!r}")
     try:
         emo = emotion_core.prompt_block(session)
         if emo:
@@ -316,18 +316,18 @@ def build_system(session: str, query: str) -> str:
     blocks.append(tools_text())
     try:
         blocks.append(registry_box.pointer())
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001
+        S.log(f"[prompt] registry 段落跳过：{e!r}")
     try:
         blocks.append(status_box.fragment())
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001
+        S.log(f"[prompt] status 段落跳过：{e!r}")
     try:
         tummy = stomach_box.fragment()
         if tummy:
             blocks.append("# 你的肚子\n" + tummy)
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001
+        S.log(f"[prompt] stomach 段落跳过：{e!r}")
     blocks.append(EXPRESSION_RULES)
     blocks.append(SELF_RULE)
     blocks.append("# 现在这扇门\n" + door_rule(session))

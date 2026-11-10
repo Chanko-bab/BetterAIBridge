@@ -643,6 +643,26 @@ def _resolve_installer_url(req: Dict[str, Any]) -> Tuple[str, str]:
     raise PbabError("解析官方下载地址失败：" + "；".join(errors or ["没有可用的直链"]))
 
 
+def _stderr_note(err: bytes, limit: int = 200) -> str:
+    """把 PowerShell 的 stderr 压成一句能看懂的话（CLIXML 标签和换行都去掉）。
+
+    PowerShell 报错走的是 UTF-16 包装的 CLIXML，直接 utf-8 解会得到一堆乱码；
+    中文系统上真正的错误文字是 GBK。这里按 utf-8 → gbk 依次试，谁先成功用谁。
+    """
+    if not err:
+        return ""
+    text = ""
+    for enc in ("utf-8", "gbk"):
+        try:
+            text = err.decode(enc)
+            break
+        except (UnicodeDecodeError, LookupError):
+            continue
+    text = text.replace("_x000D__x000A_", " ")
+    text = re.sub(r"<[^>]+>", " ", text)
+    return " ".join(text.split())[:limit]
+
+
 def _powershell_signature(path: Path) -> Dict[str, Any]:
     literal = str(path).replace("'", "''")
     script = (
@@ -670,6 +690,12 @@ def _powershell_signature(path: Path) -> Dict[str, Any]:
                   6: "UnknownError"}.get(raw_status, "UnknownError")
     else:
         status = str(raw_status or "")
+    if not status:
+        # 空状态不是"未签名"，而是 cmdlet 根本没跑起来（模块被策略挡住、
+        # 缺 Microsoft.PowerShell.Security 等）。以前这里静默返回空字符串，
+        # 上层只看到一句 invalid，查不出是环境坏了还是包真的没签，所以要点名。
+        note = _stderr_note(out.stderr or b"")
+        raise PbabError(f"签名查询没有结果：{note or 'PowerShell 没有给出状态'}")
     return {"Status": status,
             "Subject": str(data.get("Subject") or "")}
 

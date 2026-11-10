@@ -39,6 +39,19 @@ AUDIT_PATH = S.STATE_DIR / "bridge_audit.jsonl"
 GRANTS_PATH = S.APP_ROOT / "config" / "bridge_grants.json"
 
 
+def _inside_install(path: str | Path) -> bool:
+    """这路径是不是真的落在安装目录里（桥的所有文件类能力都先过这一关）。
+
+    不能退回字符串前缀比较：`D:\\BAB-old\\x` 的字符串前缀同样是 `D:\\BAB`，
+    同盘的兄弟目录会被判成"内部"。0.6.5 自查发现的口子就是这一处，
+    现在统一走 `is_relative_to`（按路径分段判定，不是按字符判定）。
+    """
+    try:
+        return Path(str(path)).resolve().is_relative_to(Path(S.APP_ROOT).resolve())
+    except OSError:
+        return False
+
+
 # ---------------------------------------------------------------- 模组与身份
 
 def _token_path(mid: str) -> Path:
@@ -431,8 +444,7 @@ def _install_media(raw: str) -> Path:
     if not p.is_absolute():
         p = Path(S.APP_ROOT) / p
     p = p.resolve()
-    root = Path(S.APP_ROOT).resolve()
-    if p != root and root not in p.parents:
+    if not _inside_install(p):
         raise HTTPException(400, "只能播放安装目录里的音频")
     if not p.is_file():
         raise HTTPException(400, "找不到这个音频文件")
@@ -582,7 +594,7 @@ def _wh_put(mid: str, name: str = "", base64: str = "", path: str = "",
             raise HTTPException(400, f"base64 不合法：{e}") from e
     elif str(path or "").strip():
         src = Path(str(path).strip())
-        if not src.is_file() or not str(src.resolve()).startswith(str(S.APP_ROOT.resolve())):
+        if not src.is_file() or not _inside_install(src):
             raise HTTPException(400, "只能放安装目录里的文件，或直接给 base64")
         raw = src.read_bytes()
     else:

@@ -109,8 +109,24 @@ def _merge(base: Dict[str, Any], over: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+def _inside_install(target: str | os.PathLike) -> bool:
+    """这个路径是不是落在本安装目录里（只判断，不改写）。"""
+    try:
+        t = Path(target).resolve()
+        root = APP_DIR.resolve()
+        return t == root or root in t.parents
+    except (OSError, ValueError):
+        return False
+
+
 def _sanitize(cfg: Dict[str, Any]) -> Dict[str, Any]:
-    """路径不存在就回退到安装目录推导值（旧配置写着别的盘符时不留死路）。"""
+    """路径不存在就回退到安装目录推导值（旧配置写着别的盘符时不留死路）。
+
+    但"路径存在"不等于"配置是对的"：把整个程序目录复制到别的盘之后，
+    config/app.yaml 里还写着旧盘的老目录，而老目录通常也还在，于是启动器
+    一声不响地去跑另一份内核（0.6.5 自查时就是踩到这个）。这种情况不自动
+    改写——用户可能确实想指向别处——但必须在日志里点名，否则查不出来。
+    """
     import logging
 
     log = logging.getLogger("xiaochen")
@@ -132,6 +148,19 @@ def _sanitize(cfg: Dict[str, Any]) -> Dict[str, Any]:
         if not ok:
             log.warning("配置项 %s 指向不存在的路径 %s，已回退到 %s", key, cur, DEFAULTS[key])
             cfg[key] = DEFAULTS[key]
+
+    outside = [
+        f"{key}={cfg.get(key)}"
+        for key in ("project_root", "bundle_dir", "start_all", "start_core", "start_asr")
+        if isinstance(cfg.get(key), str) and cfg.get(key)
+        and not _inside_install(cfg[key])
+    ]
+    if outside:
+        log.warning(
+            "配置指向本安装目录之外，程序可能用的是另一份文件：%s（本目录 %s）。"
+            "如果这是复制/换盘后的旧配置，请把这些键改回安装目录内。",
+            "；".join(outside), APP_DIR,
+        )
     return cfg
 
 
