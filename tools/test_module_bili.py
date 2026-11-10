@@ -27,10 +27,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.dont_write_bytecode = True
 
-SRC = Path(os.environ.get("BAB_BILI_SRC") or r"D:\BAB-release\Bilibili_bridge\src")
+SRC = Path(os.environ.get("BAB_BILI_SRC") or r"D:\Program for BAB\program_bili_bridge.pbab")
 KNOWN_CAPS = {"chat.say", "memory.search", "memory.note", "brain.snapshot",
-              "mood.read", "presence.read", "notice.push"}
-EXPECTED_TOOLS = 12
+              "mood.read", "presence.read", "notice.push", "warehouse.put"}
+EXPECTED_TOOLS = 15
 
 FAILS: list[str] = []
 OKS = 0
@@ -126,6 +126,44 @@ def behaviour() -> None:
     for key in ("uptime_s", "requests", "log_bytes", "last_error", "bridge", "core"):
         check(key in health, f"/health 缺 {key}")
     check("bili_doctor" in (health.get("tools") or []), "/health 的工具表里没有 bili_doctor")
+    for name in ("bili_comments", "bili_dm_read", "bili_save_image"):
+        check(name in (health.get("tools") or []), f"/health 的工具表里没有 {name}")
+
+    # 0.6.5：评论/私信图片只给 ref，bili_save_image 才真的存
+    mod._need_login = lambda: None
+    mod._bvid_of = lambda up: "BV1TEST"
+    mod._aid_of = lambda bv: "123"
+    mod.http_json = lambda url, params=None, data=None, **kw: {
+        "code": 0,
+        "data": {"page": {"count": 1}, "replies": [{
+            "rpid": 99, "ctime": 1700000000, "like": 7,
+            "member": {"uname": "某人"},
+            "content": {"message": "这张图好看", "pictures": [
+                {"img_src": "https://i0.hdslb.com/bfs/x.jpg", "img_width": 640, "img_height": 480}]},
+        }]},
+    }
+    got = mod.do_comments({"url": "BV1TEST"})
+    ref = (got["comments"][0]["images"] or [{}])[0].get("ref")
+    check(got["comments"][0]["message"] == "这张图好看", f"评论没解析对：{got}")
+    check(bool(ref and ref.startswith("img:")), f"评论图片没给 ref：{got}")
+    check(got["comments"][0]["images"][0]["width"] == 640, f"图片尺寸丢了：{got}")
+
+    mod._owner_check = lambda: "42"
+    mod.incoming_from_owner = lambda size=10: [{
+        "msg_key": "k1", "timestamp": 1700000001, "msg_type": 2,
+        "content": json.dumps({"url": "https://i0.hdslb.com/bfs/y.png", "width": 100, "height": 80}),
+    }]
+    dm = mod.do_dm_read({"size": 5})
+    check(dm["count"] == 1 and dm["messages"][0]["images"], f"私信图片没读出来：{dm}")
+
+    captured = {}
+    mod._download_image = lambda url: (b"\\x89PNG\\r\\n\\x1a\\n" + b"x" * 32, ".png")
+    mod.call_cap = lambda cap, args=None, timeout=10.0: captured.update(cap=cap, args=args) or {"ok": True, "id": "img1"}
+    saved = mod.do_save_image({"ref": ref})
+    check(saved.get("id") == "img1" and saved.get("library") == "media", f"存图返回不对：{saved}")
+    check(captured.get("cap") == "warehouse.put", f"没走 warehouse.put：{captured}")
+    check(captured.get("args", {}).get("library") == "media", f"没写进 media 库：{captured}")
+    check(str(captured.get("args", {}).get("kind")) == "image", f"kind 不是 image：{captured}")
 
 
 def smoke() -> None:
@@ -178,7 +216,8 @@ def ensure_origin(url):
     ORIGINS.append(url)
 
 
-def fetch_json(url, method="GET", body=None, raw_body=None, headers=None, timeout=45.0):
+def fetch_json(url, method="GET", body=None, raw_body=None, headers=None, timeout=45.0,
+               content_type=None):
     CALLS.append({"url": url, "method": method, "body": raw_body})
     if "passport" in url:
         return {"code": 0, "data": {"url": "https://x/qr", "qrcode_key": "K"}}
@@ -245,9 +284,11 @@ def check_browser_mode(tmp: Path) -> None:
     env["BAB_ROOT"] = str(tmp)
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     env["BAB_BILI_TRANSPORT"] = "browser"
-    out = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, env=env, timeout=120)
-    ok = "fake-ok" in (out.stdout or "")
-    check(ok, f"浏览器通道行为不对：{(out.stdout or '')[-200:]} {(out.stderr or '')[-300:]}")
+    out = subprocess.run([sys.executable, "-c", script], capture_output=True, env=env, timeout=120)
+    stdout = out.stdout.decode("utf-8", "replace")
+    stderr = out.stderr.decode("utf-8", "replace")
+    ok = "fake-ok" in stdout
+    check(ok, f"浏览器通道行为不对：{stdout[-200:]} {stderr[-300:]}")
 
 
 def main() -> int:
@@ -263,9 +304,13 @@ def main() -> int:
     check(man.get("api") == 1, f"api 应为 1：{man.get('api')}")
     check(str(man.get("id") or "") == "bili_bridge", f"id 应为 bili_bridge：{man.get('id')}")
     check(str(man.get("version") or "").startswith("0."), f"版本应升到 0.x：{man.get('version')}")
-    check(str(man.get("version") or "") >= "0.7.0", f"0.7.0 起才有记忆/互关/评论：{man.get('version')}")
+    check(str(man.get("version") or "") == "0.6.5", f"版本应对齐启动器 0.6.5：{man.get('version')}")
     wants = list((man.get("bridge") or {}).get("wants") or [])
     check("memory.note" in wants, "module.json 的 bridge.wants 里没有 memory.note（她写不进自己的抽屉）")
+    check("warehouse.put" in wants, "module.json 的 bridge.wants 里没有 warehouse.put（图片存不进仓库）")
+    libs = list((man.get("warehouse") or {}).get("libraries") or [])
+    check(any(str(x.get("id")) == "media" for x in libs if isinstance(x, dict)),
+          "module.json 没有 media 库（图片没地方存）")
     entry = str((man.get("entry") or {}).get("start") or "")
     check(bool(entry) and (SRC / entry).is_file(), f"entry.start 不存在：{entry}")
     ports = [int(p) for p in (man.get("ports") or []) if str(p).isdigit()]
@@ -305,7 +350,7 @@ def main() -> int:
     if (SRC / "agent.md").is_file():
         doc = (SRC / "agent.md").read_text(encoding="utf-8-sig")
         check(len(doc) > 300, "agent.md 太短")
-        check("bili_browse" in doc and "bili_comment" in doc, "agent.md 没提新工具")
+        check(all(n in doc for n in ("bili_browse", "bili_comment", "bili_comments", "bili_save_image")), "agent.md 没提新工具")
         check("怎么装" not in doc and "扫码" not in doc, "agent.md 里混进了给使用者看的安装步骤")
     sch = load("settings.schema.json")
     props = sch.get("properties") or {}
@@ -377,7 +422,7 @@ def main() -> int:
             print("  -", f)
         print(f"\n{OKS} ok, {len(FAILS)} fail")
         return 1
-    print(f"PASS {OKS} 条：清单、十二个工具↔端点、启动脚本、自检/日志/设置、agent.md、无垃圾文件都对。")
+    print(f"PASS {OKS} 条：清单、十五个工具↔端点、启动脚本、自检/日志/设置、agent.md、无垃圾文件都对。")
     return 0
 
 

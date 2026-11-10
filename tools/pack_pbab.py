@@ -30,7 +30,7 @@ def _sha256(p: Path) -> str:
     return h.hexdigest()
 
 
-_SKIP_DIRS = {"__pycache__", "logs", ".git", ".idea", ".vscode", "data"}
+_SKIP_DIRS = {"__pycache__", "logs", ".git", ".idea", ".vscode", "data", "engine"}
 
 
 def _packable(src: Path, p: Path, checksums: str) -> bool:

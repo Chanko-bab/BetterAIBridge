@@ -139,7 +139,7 @@ SUITES = [
      "模组合约：最小合规包校验、BAB_MODULE_PORT、http 健康、工具端点、文档口径"),
         ("module_routine", "tools/test_module_routine.py", "gui", "日常事务：清单、十三个工具、时间解析、免打扰、调度（没源码就跳过）"),
         ("module_bili", "tools/test_module_bili.py", "gui",
-         "B 站桥：清单、十二个工具、agent.md、自检/日志/设置回读"),
+         "B 站桥：清单、十五个工具、评论/私信图片 ref、显式存图、agent.md、自检/日志/设置回读"),
         ("module_qq", "tools/test_module_qq.py", "gui",
          "QQ 桥：清单、二十个工具、自带引擎与登录、看图/听声/引用/撤回/群管待批、仓库与说说评论（没源码就跳过）"),
         ("module_live2d", "tools/test_module_live2d.py", "gui",
