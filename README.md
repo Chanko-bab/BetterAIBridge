@@ -9,9 +9,27 @@
 
 - 有安装包：`BetterAIBridge-Setup-0.6.5.exe`（IExpress 自解压，安装目录默认在 `%LOCALAPPDATA%`）。
 - 有源码运行：`setup.cmd` 建壳/内核/语音三个 venv，`start.cmd` 启动。
-- 自检 **88 套**，全量约 194 秒；`build.ps1` 出包前会先跑一遍。
+- 自检 **94 套**，全量约 150 秒；`build.ps1` 出包前会先跑一遍。
 - 安装目录内的 `WiseEntity/entity/` 是她的数据：人格、记忆、情绪、自我、状态；卸载时默认保留。
 - 不是“另一个聊天壳”：壳只负责窗口和桥，内核负责她是谁、记得什么、现在什么情绪。
+
+## 0.6.5 这一版（本地改动，未推送）
+
+- 桥的路径守卫：`_wh_put` 原来用字符串前缀判断"文件在不在安装目录里"，
+  `D:\BAB-old\x` 这种同盘兄弟目录会被判成内部；改成 `is_relative_to` 的 `_inside_install`，
+  播放音频与写入仓库两条能力共用这一个守卫。
+- 复制/换盘后的"跑到另一份程序"：`config/app.yaml` 里还写着旧盘路径、而旧目录还在时，
+  旧逻辑一声不响就用旧目录。现在 `config._sanitize` 会点名告警（不擅自改写），并有 `config_portable` 自检。
+- 提示词拼装不再静默降级：`llm_box.build_system` 里 12 处 `except: pass` 全部带日志，
+  "她少了一段人设"以后查得到。
+- 签名查询不再假装"未签名"：PowerShell 的 `Get-AuthenticodeSignature` 跑不起来时，
+  `pbab` 会把真实原因（模块加载失败之类）抛出来；本机没有这个能力时 `signature` 自检明确 skip。
+- 三条新门禁：`exception_policy` 扩到内核（宽泛捕获冻结、按文件静默额度）、
+  `architecture`（内核不许 import 启动器、模块 docstring、体量与 print 冻结、自检登记、依赖许可登记）、
+  `version`（`VERSION.txt` 是唯一真源，README/站点/出包脚本只许跟随）。
+- 文档不再靠手写：`docs/BRIDGE.md` 的能力表与事件表由 `bridge.CAPS` 生成（实测 32 项能力 / 11 个事件，
+  此前 README 写 22 项、文档表只有 5 行）；`THIRD-PARTY-NOTICES.md` 补上 LGPL/Apache 组件的发行声明。
+- 站点版本从 0.6.4 同步到 0.6.5（24 个发布位点，历史升级说明不动）。
 
 ## 0.6.2–0.6.4 这一版
 
@@ -131,7 +149,7 @@ BetterAIBridge/
 ## 自检与出包
 
 ```powershell
-.\.venv\Scripts\python.exe tools\check.py          # 62 套全跑，出张表
+.\.venv\Scripts\python.exe tools\check.py          # 94 套全跑，出张表
 .\.venv\Scripts\python.exe tools\check.py --list   # 有哪些
 .\.venv\Scripts\python.exe tools\check.py --only memory,styles
 ```
@@ -170,7 +188,7 @@ checksums.json         每个文件的 sha256
 - `docs/STRUCTURE.md`：两个进程、内核盒子、数据流。
 - `docs/MODULES.md`：模组契约、端口、健康检查、设置 schema。
 - `docs/M-STRUCTURE.md`：给模组作者和给智能体看的两套结构。
-- `docs/BRIDGE.md`：桥的 22 项能力、授权、审计。
+- `docs/BRIDGE.md`：桥的 32 项能力、授权、审计。
 - `docs/launcher.md`：窗口、托盘、保姆、教程。
 
 ## 历史版本

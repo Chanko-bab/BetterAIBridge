@@ -103,16 +103,42 @@
 
 | 能力 | 参数 | 说明 |
 |---|---|---|
-| `memory.search` | `query`, `limit` | 只在自己抽屉里搜 |
-| `memory.note` | `text`, `scope`, `group`, `kind_key` | 写进自己抽屉，并触发 `memory.written` |
-| `brain.snapshot` | — | 情绪值、mood、驱力、在线状态、记忆总数 |
-| `mood.read` | — | mood 词 + 13 个值 |
-| `presence.read` | — | 在线 / 忙碌 / 离开 |
+| `audio.play` | `path` | 让启动器放一段安装目录里的音频（mp3/wav），开始播就回，不挡调用 |
+| `audio.stop` | — | 停掉启动器正在放的音频 |
+| `avatar.get` | — | 她现在的头像：文件路径、是不是主人换的、什么时候换的 |
+| `brain.snapshot` | — | 她的此刻：情绪值、理智、驱力、在线状态、记忆总数 |
+| `chat.say` | `hint` | 让她用自己的话说一句（会真的作为她的发言出现，不是系统提示） |
+| `config.write` | `key`, `value` | 改一项界面配置（只开放 ui.*，例如 ui.background.opacity） |
+| `fs.mkdir` | `path` | 在 BAB 安装目录里建一个目录（只建目录，不能写文件、不能出安装目录） |
+| `memory.note` | `text`, `scope`, `group`, `kind_key` | 往自己的抽屉里记一条（写进 notes.jsonl，也会进她的事件流） |
+| `memory.search` | `query`, `limit` | 在 BAB 给这个模组留的抽屉里搜记忆（只看得到自己这个程序的抽屉） |
+| `mood.read` | — | 只看情绪：mood 词 + 13 个值 |
+| `notice.push` | `text`, `chat` | 让保姆栏记一条提醒（带时间）；chat=true 时也在她的聊天里插一句短话 |
+| `persona.face.get` | — | 性格脸谱的规格（四个维度、发色、表情），可以照着画一张 |
+| `persona.style.get` | — | 主人写的自定义性格：摘要、13 维情绪参数、脸谱规格 |
+| `presence.read` | — | 使用者在不在（online/busy/away） |
+| `project.apply` | `ops`, `reason` | 前置模组改程序文件/代码：不再逐次确认，先整包备份再写，记审计；可建目录、写任意文件；只支持 mkdir/write/delete |
+| `sense.devices` | — | 问启动器：这台机器有几个摄像头、几个麦克风，现在选的是哪台 |
+| `sense.look` | `question` | 让启动器的耳目看一眼（有摄像头用摄像头，没有就看屏幕），回文字描述 |
+| `sense.status` | — | 启动器耳目现在什么样：眼睛开没开、多久看一次、选的是哪台摄像头/麦克风 |
+| `tts.speak` | `text`, `voice`, `rate` | 合成她的声音并让启动器当场念出来（返回音频路径、时长、是否播出） |
+| `ui.background.get` | — | 看启动器现在的背景设置（开关、效果、跟随、点击、浓淡、速度） |
+| `ui.background.set` | `enabled`, `effect`, `follower`, `click`, `click_style`, `opacity`, `speed` | 改启动器的背景观感（只改观感，不能塞本地图片/视频路径） |
+| `ui.mouse.get` | — | 鼠标在启动器窗口里的位置（窗口外 inside=false，坐标归零） |
+| `ui.notify` | `text`, `title`, `level` | 弹一条启动器通知（托盘气泡），不进聊天、不进保姆栏；最多 240 字 |
+| `vision.describe` | `image`, `question` | 让她看一眼图并说出来（可以直接给图片路径） |
+| `voice.asr` | `path`, `audio`, `hint` | 把一段音频转成文字（内核自带的语音服务；没装模型会告诉你） |
+| `voice.message` | `path`, `audio`, `duration_ms`, `keep`, `session` | 把一段 5–90 秒的语音发进主人的聊天框（自动转写，以可播放的音频气泡出现） |
+| `voice.tts` | `text`, `voice`, `rate` | 把一句话合成她的声音（edge-tts），回 mp3 的路径；一分钟最多 6 段 |
+| `warehouse.libraries` | — | 列出你申报到的仓库库：id、标题、用途、配额、已用 |
+| `warehouse.list` | `kind`, `query`, `library` | 列你自己仓库库里的文件；看不到主人和别的模组 |
+| `warehouse.mkdir` | `name`, `library` | 在你自己的仓库库里建一个子目录 |
+| `warehouse.put` | `name`, `base64`, `path`, `kind`, `library` | 往你自己申报的仓库库里放一个文件（图片/文档/文件）；library 是你的库 id |
+| `warehouse.read` | `id`, `library` | 读你自己仓库库里一个文本文件；PDF/DOCX 只存不读 |
 
 ## 五、事件（v1）
 
-`message.in`、`message.out`、`mood.changed`、`drive.urge`、`memory.written`、
-`presence.changed`、`proactive.spoke`、`world.event`
+`message.in`、`message.out`、`mood.changed`、`drive.urge`、`memory.written`、`presence.changed`、`proactive.spoke`、`world.event`、`voice.play.started`、`voice.level`、`voice.play.ended`
 
 ## 六、安全与审计
 

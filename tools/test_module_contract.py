@@ -121,15 +121,35 @@ def test_docs() -> None:
     check('"name": "demo_ping"' in doc, "connection 示例给了可落地的工具对象")
 
 
+def _cleanup(path: Path, tries: int = 5) -> None:
+    """删临时目录，删不掉就退避重试。
+
+    Windows 上刚被跑过的子进程/杀软/索引器还会短暂占着句柄，`TemporaryDirectory`
+    的清理会抛 WinError 32，把一条本来通过的测试判成 FAIL（0.6.5 打包时就这样
+    红过一次）。这里不掩盖真问题：重试几次仍失败就只打警告，让系统回收。
+    """
+    for i in range(tries):
+        try:
+            shutil.rmtree(path)
+            return
+        except OSError:
+            if i == tries - 1:
+                print(f"  warn 临时目录没删干净（{path}），留给系统清理")
+                return
+            time.sleep(0.3 * (i + 1))
+
+
 def main() -> int:
     check(FIX.is_dir(), "fixture 目录存在")
-    with tempfile.TemporaryDirectory(prefix="bab-contract-") as td:
-        tmp = Path(td)
+    tmp = Path(tempfile.mkdtemp(prefix="bab-contract-"))
+    try:
         dst = make_temp_copy(tmp)
         test_manifest(dst)
         test_validate(dst)
         test_contract_check(dst)
         test_smoke(dst)
+    finally:
+        _cleanup(tmp)
     test_docs()
     print(f"\n{len(fails)} 个问题")
     return 1 if fails else 0
