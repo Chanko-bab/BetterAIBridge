@@ -130,7 +130,7 @@ SUITES = [
         ("module_bili", "tools/test_module_bili.py", "gui",
          "B 站桥：清单、十二个工具、agent.md、自检/日志/设置回读"),
         ("module_qq", "tools/test_module_qq.py", "gui",
-         "QQ 桥：清单、十四个工具、自带引擎与登录、看图/听声/引用/撤回/群管待批（没源码就跳过）"),
+         "QQ 桥：清单、二十个工具、自带引擎与登录、看图/听声/引用/撤回/群管待批、仓库与说说评论（没源码就跳过）"),
         ("module_live2d", "tools/test_module_live2d.py", "gui",
          "立绘：清单、四工具、设置、16 动作、情绪映射、口型包络、VTS 追踪参数白名单"),
         ("module_auth", "tools/test_module_auth.py", "any",
