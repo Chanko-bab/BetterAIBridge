@@ -171,7 +171,8 @@ function Add-UpdateItem([string]$Rel) {
 }
 
 foreach ($rel in @('main.py', 'launch.vbs', 'start.cmd', 'VERSION.txt',
-        'app', 'assets', 'WiseEntity\entity\core', 'WiseEntity\source_code\scripts')) {
+        'app', 'assets', 'WiseEntity\entity\core', 'WiseEntity\source_code\scripts',
+        'LICENSE', 'THIRD-PARTY-NOTICES.md')) {
     Add-UpdateItem $rel
 }
 $brainSrc = Join-Path $Stage 'WiseEntity\entity\brain'
