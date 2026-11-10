@@ -231,6 +231,12 @@ class MainWindow(QMainWindow):
         self.timer_state.timeout.connect(self.refresh_state)
         self.timer_state.start(int(config.get("ui.refresh_state_ms", 5000)))
 
+        # 时间感：启动器活着就每分钟续一次心跳；退出时写关闭时间。
+        self.timer_time = QTimer(self)
+        self.timer_time.setInterval(60_000)
+        self.timer_time.timeout.connect(self._time_heartbeat)
+        self.timer_time.start()
+
         # 收进托盘后，只拉「她最近主动说了什么」，用托盘小窗提示。
         self._tray_seen = 0.0
         self.timer_tray = QTimer(self)
@@ -502,6 +508,25 @@ class MainWindow(QMainWindow):
         chat = self.pages.get("chat")
         if chat is not None and hasattr(chat, "load_presence"):
             chat.load_presence()
+        self._time_boot()
+
+    def _time_boot(self, attempt: int = 0) -> None:
+        """告诉内核“我这次开机了”；内核回一份关闭时长，首轮提示词用。"""
+        if getattr(self, "_quitting", False):
+            return
+
+        def failed(_e: str) -> None:
+            if attempt < 4 and not getattr(self, "_quitting", False):
+                QTimer.singleShot(2000, lambda: self._time_boot(attempt + 1))
+
+        run_async(lambda: CoreClient(timeout=2).time_boot(),
+                  on_ok=lambda _r: None, on_err=failed)
+
+    def _time_heartbeat(self) -> None:
+        if getattr(self, "_quitting", False):
+            return
+        run_async(lambda: CoreClient(timeout=1.5).time_heartbeat(),
+                  on_err=lambda _e: None)
 
     def _set_presence(self, state: str) -> None:
         def ok(_r) -> None:
@@ -579,7 +604,7 @@ class MainWindow(QMainWindow):
         except Exception:  # noqa: BLE001
             self.log.debug("退出时隐藏托盘图标失败", exc_info=True)
         self._save_window_size()
-        for name in ("timer_ports", "timer_state", "timer_bridge", "timer_tray"):
+        for name in ("timer_ports", "timer_state", "timer_bridge", "timer_tray", "timer_time"):
             t = getattr(self, name, None)
             if t is not None:
                 try:
@@ -587,6 +612,10 @@ class MainWindow(QMainWindow):
                 except Exception:  # noqa: BLE001
                     self.log.debug("退出时停止 %s 失败", name, exc_info=True)
         # 退出前同步发一次离开状态：原来的异步请求会被 400ms 后的 quit 截断。
+        try:
+            CoreClient(timeout=1.2).time_shutdown()
+        except (CoreUnavailable, OSError, ValueError):  # noqa: BLE001
+            self.log.warning("退出前记录关闭时间失败", exc_info=True)
         try:
             CoreClient(timeout=1.2).set_presence("away")
         except Exception:  # noqa: BLE001

@@ -18,10 +18,10 @@ import httpx
 class NotConfigured(RuntimeError):
     """框架还没配置（没有 key / 人格是占位符）。"""
 
-from . import (avatar, brain_box, drives, emotion_core, memory_box, module_cfg,
-               modules_box, persona_drift, presence, registry_box, self_model,
-               self_store, sense, settings as S, status_box, stomach_box,
-               style_box, tool_bus)
+from . import (avatar, brain_box, drives, emotion_core, home_box, memory_box,
+               module_cfg, modules_box, persona_drift, presence, registry_box,
+               self_model, self_store, sense, settings as S, status_box,
+               stomach_box, style_box, time_sense, tool_bus)
 
 _client: httpx.AsyncClient | None = None
 _persona_cache = {"text": "", "mtime": 0.0}
@@ -75,7 +75,7 @@ def door_rule(session: str) -> str:
 
 BASE_TOOLS = """# 系统给我的工具（只说明有什么，不等于我会）
 - 这个对话窗口（常驻内核 40720）：说话、记事、翻记忆。
-- 我的眼睛、头像，看下面的工具清单；清单里没有的，就是这会儿没有。
+- 我的眼睛；头像换过之后，工具清单里才会出现看头像的口子。清单里没有的，就是这会儿没有。
 - 模组给的工具是真能调的（下面列了格式）；没列出来的就是没有。
 - 对方问具体数字（温度、比分、价格、日期）时，先调工具查，别凭印象答；查不到就说查不到。
 - 除了上面这些，我没有别的程序。清单里没有的名字（比如别的聊天工具、站子），就是这会儿没有，别凭印象编，也别用"没装"当借口。没装的东西，我连它的名字都不该知道——别人问起，就说这台机器上没有那个东西。
@@ -239,6 +239,12 @@ def build_system(session: str, query: str) -> str:
         S.log(f"[self] prompt failed: {e!r}")
     blocks.append(FRAME_PERSONA + persona())
     try:
+        home = home_box.fragment()
+        if home:
+            blocks.append(home)
+    except (OSError, ValueError):
+        pass
+    try:
         av = avatar.fragment()
         if av:
             blocks.append(av)
@@ -267,6 +273,12 @@ def build_system(session: str, query: str) -> str:
     try:
         blocks.append(presence.fragment())
     except Exception:
+        pass
+    try:
+        clock = time_sense.fragment(session)
+        if clock:
+            blocks.append(clock)
+    except (OSError, ValueError):
         pass
     mem = memory_box.fragment(query, session)
     if mem:

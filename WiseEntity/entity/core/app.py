@@ -27,7 +27,7 @@ from . import (auth, brain_box, bridge, chat_core, drives, emotion_core, event_b
                modules_box, nanny_chat, tts,
                llm_box, maintenance, memory_box, memory_store, nanny, persona_drift, presence,
                proactive, registry_box, self_reflect, self_store, self_trials, sense,
-               settings as S, stomach_box, style_box, tool_bus, tutorial)
+               settings as S, stomach_box, style_box, time_sense, tool_bus, tutorial)
 
 # 可选模组：B 站门（bili_door.py 由 bili_bridge 模组装进来，没装就跳过）
 try:
@@ -619,6 +619,21 @@ async def presence_set(inp: PresenceIn):
     await _emit("presence.changed", {"state": st.get("state")})
     return {"ok": True, "state": st["state"], "label": presence.label(),
             "updated_at": st.get("updated_at", "")}
+
+
+@app.post("/time/boot")
+async def time_boot():
+    return time_sense.boot()
+
+
+@app.post("/time/shutdown")
+async def time_shutdown():
+    return time_sense.shutdown()
+
+
+@app.post("/time/heartbeat")
+async def time_heartbeat():
+    return time_sense.heartbeat()
 
 
 @app.get("/notices")

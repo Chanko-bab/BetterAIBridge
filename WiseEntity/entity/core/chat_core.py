@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 from . import brain_box, followup, llm_box, memory_box, memory_store, settings as S
-from . import voice_prompt
+from . import time_sense, voice_prompt
 
 _sessions: dict[str, list[dict]] = {}
 _loaded = False
@@ -144,6 +144,10 @@ async def reply(session: str, text: str, *, is_owner: bool | None = None,
         if out:
             remember_turn(session, "assistant", out)
         save_sessions()
+        try:
+            time_sense.consume_boot()
+        except (OSError, ValueError):
+            pass
         plain = text or (f"（{str((media or {}).get('name') or '语音')}）" if (media or voice) else "")
         _transcript(session, plain, out)
     st = brain_box.state()

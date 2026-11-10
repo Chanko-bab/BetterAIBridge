@@ -217,6 +217,15 @@ class CoreClient:
     def set_presence(self, state: str) -> Dict[str, Any]:
         return self._post("/presence", {"state": state}, timeout=6)
 
+    def time_boot(self) -> Dict[str, Any]:
+        return self._post("/time/boot", {}, timeout=4)
+
+    def time_shutdown(self) -> Dict[str, Any]:
+        return self._post("/time/shutdown", {}, timeout=2)
+
+    def time_heartbeat(self) -> Dict[str, Any]:
+        return self._post("/time/heartbeat", {}, timeout=2)
+
     def emotion_stimulus(self, kind: str, intensity: float = 1.0) -> Dict[str, Any]:
         """给她的情绪记一笔（比如话说一半被打断，剩下几句咽回去了）。"""
         return self._post("/emotion/stimulus", {"kind": kind, "intensity": intensity},

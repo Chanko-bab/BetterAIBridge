@@ -217,18 +217,24 @@ def _builtin_tools() -> Dict[str, Dict[str, Any]]:
             "builtin": "send_media",
             "max_seconds": 10.0,
         },
-        "avatar_see": {
-            "name": "avatar_see",
-            "module": "self",
-            "module_name": "自己",
-            "hint": "看你自己的头像（对方可能换过），这样你才知道自己现在长什么样",
-            "args": {},
-            "method": "POST",
-            "url": "",
-            "builtin": "avatar_see",
-            "max_seconds": 60.0,
-        },
     }
+    try:
+        from . import avatar
+
+        if avatar.info().get("custom"):
+            out["avatar_see"] = {
+                "name": "avatar_see",
+                "module": "self",
+                "module_name": "自己",
+                "hint": "看你自己的头像（对方已经换过了），这样你才知道自己现在长什么样",
+                "args": {},
+                "method": "POST",
+                "url": "",
+                "builtin": "avatar_see",
+                "max_seconds": 60.0,
+            }
+    except (OSError, ValueError):
+        pass
     if sense.eyes():
         out["look_around"] = {
             "name": "look_around",
@@ -397,6 +403,12 @@ async def _call_impl(name: str, args: Dict[str, Any], session: str = "") -> Dict
     items = tools()
     spec = items.get(name)
     if not spec:
+        if name == "avatar_see":
+            from . import avatar
+
+            if not avatar.info().get("custom"):
+                return {"ok": False, "tool": name,
+                        "error": "我还没换过自己的头像，看不到；默认占位图不是我。"}
         return {"ok": False, "error": f"没有这个工具：{name}", "tools": list(items)}
     builtin = spec.get("builtin")
     if builtin == "look_around":
@@ -569,6 +581,9 @@ async def _call_impl(name: str, args: Dict[str, Any], session: str = "") -> Dict
             from . import avatar, llm_box
 
             one = avatar.info()
+            if not one.get("custom"):
+                return {"ok": False, "tool": name,
+                        "error": "我还没换过自己的头像，看不到；默认占位图不是我。"}
             text = await llm_box.describe_image(
                 one["path"],
                 "这是你自己的头像。用第一人称说说你现在长什么样（颜色、形状、风格），两三句就够。",

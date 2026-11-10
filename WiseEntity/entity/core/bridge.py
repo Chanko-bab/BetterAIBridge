@@ -367,11 +367,14 @@ async def _vision_describe(mid: str, image: str = "", path: str = "",
 
 
 def _avatar_get(mid: str, **_ignored: Any) -> Dict[str, Any]:
-    """她的头像：路径 + 是不是主人换的 + 什么时候换的。"""
+    """她的头像：换过才给路径；默认占位图不给看。"""
     from . import avatar
 
     one = avatar.info()
-    return {"ok": True, **one}
+    if not one.get("custom"):
+        return {"ok": True, "custom": False, "viewable": False, "path": "",
+                "updated_at": "", "updated_by": "", "source": ""}
+    return {"ok": True, "viewable": True, **one}
 
 
 # ---------------------------------------------------------------- 耳目（启动器本体）
