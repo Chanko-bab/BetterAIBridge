@@ -21,6 +21,7 @@ from ...services import asr, sense, update
 from ..widgets.see_through import see_through, see_through_widget
 from .settings_archive import ArchiveActionsMixin
 from .settings_bridge import BridgeActionsMixin
+from .settings_refresh import RefreshActionsMixin
 from .settings_update import UpdateActionsMixin
 from .settings_voice import VoiceActionsMixin
 
@@ -47,7 +48,8 @@ def preview_done_text(size_bytes: int, playing: bool) -> str:
     return f"{head}，正在播放" if playing else f"{head}，但没出声（设备或音量？）"
 
 
-class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, UpdateActionsMixin, QWidget):
+class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin,
+                   RefreshActionsMixin, UpdateActionsMixin, QWidget):
     open_details = Signal()
     ports_ready = Signal(object)
     task_done = Signal(object)
@@ -631,17 +633,8 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
 
     def showEvent(self, ev):  # noqa: N802
         super().showEvent(ev)
-        self.refresh_model()
-        self.refresh_ports()
-        self.refresh_bridge()
-        self.refresh_stomach()
-        self.refresh_memory()
-        self.refresh_voice()
-        self.refresh_followup()
-        self.refresh_startup()
-        self.refresh_asr()
-        self.refresh_sense()
-        self.refresh_warehouse()
+        # 先让页面画出来，再去读内核/设备/目录，避免首帧被同步检查拖住。
+        self.schedule_settings_refresh()
 
     # ---------------------------------------------------------------- 语音转写
 
@@ -852,14 +845,18 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
         self._refresh_voice_store()
 
     def _refresh_voice_store(self) -> None:
-        try:
+        def work():
             from ...services import voice_store
 
             rows = [r for r in voice_store.rows(config.APP_DIR) if not r.get("deleted")]
-            total = voice_store.total_bytes(config.APP_DIR)
-            self.lbl_vmsg.setText(f"已有 {len(rows)} 条录音，共 {total / 1024 / 1024:.1f} MB。")
-        except Exception as exc:  # noqa: BLE001
-            self.lbl_vmsg.setText(f"（读不到录音：{exc}）")
+            return len(rows), voice_store.total_bytes(config.APP_DIR)
+
+        def ok(res) -> None:
+            n, total = res
+            self.lbl_vmsg.setText(f"已有 {n} 条录音，共 {total / 1024 / 1024:.1f} MB。")
+
+        self._spawn(work, ok,
+                    lambda e: self.lbl_vmsg.setText(f"（读不到录音：{e}）"))
 
     # ---------------------------------------------------------------- 启动与后台
 
@@ -1165,16 +1162,19 @@ class SettingsPage(ArchiveActionsMixin, VoiceActionsMixin, BridgeActionsMixin, U
 
     # ---------------------------------------------------------------- 目录
     def refresh_warehouse(self) -> None:
-        try:
+        def work():
             from app.services import warehouse
 
             rows = warehouse.list_items()
             collected = len(warehouse.collection(limit=999))
             mb = sum(int(r.get("bytes") or 0) for r in rows) / 1024 / 1024
-            self.lbl_warehouse.setText(
-                f"共 {len(rows)} 件 · 收着 {collected} 件 · {mb:.1f} MB")
-        except (OSError, ValueError):
-            self.lbl_warehouse.setText("仓库暂时读不到")
+            return len(rows), collected, mb
+
+        def ok(res) -> None:
+            n, collected, mb = res
+            self.lbl_warehouse.setText(f"共 {n} 件 · 收着 {collected} 件 · {mb:.1f} MB")
+
+        self._spawn(work, ok, lambda _e: self.lbl_warehouse.setText("仓库暂时读不到"))
 
     def open_warehouse(self) -> None:
         from ..dialogs.warehouse_dialog import WarehouseDialog

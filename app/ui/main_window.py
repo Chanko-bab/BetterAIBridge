@@ -402,7 +402,10 @@ class MainWindow(QMainWindow):
         for k, btn in self.buttons.items():
             btn.setChecked(k == key)
         self.stack.setCurrentWidget(self.pages[key])
-        self._fade_in(self.pages[key])
+        # 设置页卡片多，给整页套透明度特效时在软件渲染上会明显发卡；
+        # 这一页直接切过去，宁可少一次淡入，也不要让用户等。
+        if key != "settings":
+            self._fade_in(self.pages[key])
         page = self.pages[key]
         if key == "chat" and self._nav_last is not None:
             def _wire_tab(p=page) -> None:
