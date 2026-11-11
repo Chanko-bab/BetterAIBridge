@@ -403,11 +403,19 @@ class ModuleCard(QFrame):
             lg = (pbab.manifest(self.mod["id"]) or {}).get("login") or {}
         except Exception:
             lg = {}
-        from ..dialogs.qr_login import QrLoginDialog
+        kind = str(lg.get("type") or "qr").strip().lower()
+        if kind == "window":
+            from ..dialogs.window_login import WindowLoginDialog
 
-        dlg = QrLoginDialog(self, port=port,
-                            title=str(lg.get("label") or "扫码登录"),
-                            hint=str(lg.get("hint") or ""))
+            dlg = WindowLoginDialog(self, port=port,
+                                    title=str(lg.get("label") or "登录"),
+                                    hint=str(lg.get("hint") or ""))
+        else:
+            from ..dialogs.qr_login import QrLoginDialog
+
+            dlg = QrLoginDialog(self, port=port,
+                                title=str(lg.get("label") or "扫码登录"),
+                                hint=str(lg.get("hint") or ""))
         ok = dlg.exec()
         self.page.reload()
         if ok:
