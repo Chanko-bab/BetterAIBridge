@@ -155,6 +155,16 @@ def main() -> int:
             QMessageBox.information(None, "BetterAIBridge", "已经有一个窗口在跑了。")
         return 0
 
+    # 多智能体：先恢复当前智能体的 env/active，再碰 registry（registry 按智能体分目录）。
+    try:
+        from app.core import agents as _agents
+
+        _active = _agents.boot()
+        if _active:
+            log.info("当前智能体：%s", _active)
+    except Exception:  # noqa: BLE001
+        log.warning("恢复当前智能体失败，按旧目录启动", exc_info=True)
+
     # 改过名的模组（0.4.0：m -> m_framework）：先迁 registry 和安装目录，再建界面
     try:
         from app.core import pbab as _pbab
@@ -265,7 +275,7 @@ def main() -> int:
                 from app.core import config as app_config
                 from app.core import local_tts
 
-                doc = json.loads((app_config.APP_DIR / "WiseEntity" / "entity" / "config" / "tts.json")
+                doc = json.loads((app_config.entity_dir() / "config" / "tts.json")
                                  .read_text(encoding="utf-8-sig"))
                 if str(doc.get("engine") or "") != "local" and str(doc.get("preview_engine") or "") != "local":
                     return

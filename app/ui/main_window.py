@@ -17,7 +17,7 @@ from PySide6.QtCore import (QEasingCurve, QEvent, QProcess, QPropertyAnimation,
 from PySide6.QtGui import QAction, QColor, QCursor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel,
-    QMainWindow, QMenu, QPushButton, QSizeGrip,
+    QMainWindow, QMenu, QMessageBox, QPushButton, QSizeGrip,
     QStackedLayout, QStackedWidget, QSystemTrayIcon, QVBoxLayout, QWidget,
 )
 
@@ -35,6 +35,7 @@ from .widgets.titlebar import TitleBar
 
 NAV = [
     ("chat", "聊天"),
+    ("agents", "智能体"),
     ("mods", "模组"),
     ("services", "服务"),
     ("settings", "设置"),
@@ -88,6 +89,7 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(make_icon())
         self._tray_hint_shown = False
         self._quitting = False
+        self._switching = False
         # 内核看门狗：连续几次探测不到才拉，别把抖动当故障
         self._core_down = 0
         self._last_core_restart = 0.0
@@ -171,6 +173,7 @@ class MainWindow(QMainWindow):
         # 设置页一个就有 349 个控件，全量预建是启动慢和内存高的主因。
         self._page_specs = {
             "chat": ("chat", "ChatPage"),
+            "agents": ("agents", "AgentsPage"),
             "mods": ("mods", "ModsPage"),
             "services": ("services", "ServicesPage"),
             "appearance": ("appearance", "AppearancePage"),
@@ -309,6 +312,139 @@ class MainWindow(QMainWindow):
             self.avatar_card.refresh(self.name)
         except Exception:  # noqa: BLE001
             self.log.warning("刷新头像卡失败", exc_info=True)
+
+    def switch_agent(self, slug: str) -> bool:
+        """切换智能体：停旧内核/模组 → 换 env/active → 重启 → 刷新界面。
+
+        返回 False 只表示“没开始切”（同一个、没建档又取消、正在切）；
+        真正启动失败在后台回调里弹窗。
+        """
+        slug = str(slug or "").strip()
+        if not slug:
+            return False
+        if getattr(self, "_switching", False):
+            QMessageBox.information(self, "正在切换", "上一次切换还没完成，稍等一下。")
+            return False
+        from ..core import agents
+        try:
+            if not agents.get(slug):
+                QMessageBox.warning(self, "找不到", "这个智能体目录不在了。")
+                return False
+            current = agents.active_slug()
+        except (OSError, ValueError, AttributeError) as exc:
+            self.log.warning("读取当前智能体失败：%s", exc)
+            return False
+        if current == slug:
+            self.refresh_identity()
+            return False
+        if not agents.is_configured(slug):
+            choice = QMessageBox.question(
+                self, "还没建档",
+                "这个智能体还没有 API Key 或人格。要现在建档吗？\n"
+                "建档写的是它自己的目录，不会动现在这个。",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+            if choice != QMessageBox.Yes:
+                return False
+            if not self._onboard_agent(slug):
+                return False
+        self._switching = True
+        self.foot_label.setText("正在切换智能体…")
+        old_snap = agents.snapshot_env()
+        old_slug = current
+
+        def work():
+            from ..core import bindings, pbab, pbab_switch
+            from ..core.agents import AgentError
+            from ..services import supervisor
+
+            out: Dict[str, object] = {"ok": False}
+            try:
+                try:
+                    supervisor.stop(wait=True)
+                except (RuntimeError, OSError, AttributeError) as exc:
+                    self.log.warning("停模组看门狗失败：%s", exc)
+                try:
+                    pbab_switch.stop_running(keep_state=True)
+                except (OSError, ValueError, KeyError, RuntimeError) as exc:
+                    self.log.warning("停旧模组失败：%s", exc)
+                try:
+                    if old_slug:
+                        bindings.unbind_all(old_slug)
+                except (OSError, ValueError, KeyError) as exc:
+                    self.log.warning("释放旧模组绑定失败：%s", exc)
+                agents.activate(slug)
+                out = dict(runtime.restart(timeout=50.0) or {"ok": False})
+            except (AgentError, OSError, ValueError, KeyError, RuntimeError, TimeoutError) as exc:
+                self.log.warning("切换智能体失败：%s", exc)
+                try:
+                    agents.restore_env(old_snap)
+                except (OSError, ValueError, KeyError) as restore_exc:
+                    self.log.warning("恢复旧智能体 env 失败：%s", restore_exc)
+                out = {"ok": False, "detail": str(exc)}
+            finally:
+                try:
+                    pbab.start_enabled()
+                except (OSError, ValueError, KeyError, RuntimeError) as exc:
+                    self.log.warning("按新智能体启动模组失败：%s", exc)
+                try:
+                    supervisor.start()
+                except (OSError, RuntimeError, AttributeError) as exc:
+                    self.log.warning("重启模组看门狗失败：%s", exc)
+            return out
+
+        run_async(work, on_ok=lambda res: self._after_switch(slug, res),
+                  on_err=lambda e: self._after_switch(slug, {"ok": False, "detail": str(e)}))
+        return True
+
+    def _onboard_agent(self, slug: str) -> bool:
+        """临时把 env 指向新智能体，用现有向导建档；取消就恢复旧 env/active。"""
+        from ..core import agents
+        old_snap = agents.snapshot_env()
+        old_active = agents.active_slug()
+        saved = False
+        try:
+            agents.apply_env(slug)
+            from .dialogs.onboarding import OnboardingWizard
+
+            dlg = OnboardingWizard(self)
+            saved = bool(dlg.exec()) and bool(dlg.saved)
+        except (OSError, ValueError, RuntimeError) as exc:
+            self.log.warning("新智能体建档失败：%s", exc)
+            QMessageBox.warning(self, "建档没成功", str(exc))
+        finally:
+            if not saved:
+                try:
+                    agents.restore_env(old_snap)
+                    agents.set_active(old_active)
+                except (OSError, ValueError, KeyError):
+                    self.log.warning("恢复旧智能体 env 失败", exc_info=True)
+        return saved
+
+    def _after_switch(self, slug: str, result: Dict[str, object]) -> None:
+        self._switching = False
+        self.refresh_identity()
+        chat = self.pages.get("chat")
+        if chat is not None:
+            try:
+                from .pages.chat_agent import reset_chat
+
+                reset_chat(chat)
+            except (RuntimeError, AttributeError, TypeError, OSError) as exc:
+                self.log.warning("刷新聊天页失败：%s", exc)
+        page = self.pages.get("agents")
+        if page is not None and hasattr(page, "refresh"):
+            try:
+                page.refresh()
+            except (RuntimeError, AttributeError, ValueError, OSError) as exc:
+                self.log.warning("刷新智能体页失败：%s", exc)
+        if result.get("ok"):
+            self.foot_label.setText("已切换智能体")
+        else:
+            detail = str(result.get("detail") or "内核没起来，看左侧「日志」")
+            self.foot_label.setText("切换后内核没起来")
+            QMessageBox.warning(self, "切换完成，但内核没起来", detail)
+        self.refresh_ports()
+        self.refresh_state()
 
     def open_avatar_dialog(self) -> None:
         try:
@@ -823,6 +959,9 @@ class MainWindow(QMainWindow):
         测试（离屏跑页面）和冒烟模式一律不自动拉起：否则测试期间会真的去
         `start_core.cmd` 起一个内核，把用例拖死。
         """
+        if getattr(self, "_switching", False):
+            self._core_down = 0
+            return
         if os.environ.get("BAB_NO_AUTORESTART") == "1" or os.environ.get("XIAOCHEN_SMOKE") == "1":
             self._core_down = 0
             return

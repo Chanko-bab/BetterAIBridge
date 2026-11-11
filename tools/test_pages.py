@@ -41,7 +41,7 @@ def _dead_client_init(self, base=None, timeout=8.0):
 
 _core_client.CoreClient.__init__ = _dead_client_init
 
-NAV_PAGES = ("chat", "mods", "services", "logs", "settings", "details")
+NAV_PAGES = ("chat", "mods", "services", "agents", "logs", "settings", "details")
 MIN_NAV_HEIGHT = 34  # 13px 字 + 上下各 9px padding，低于这个数就会裁字
 
 fails: list[str] = []

@@ -52,8 +52,18 @@ class ModuleSupervisor:
             self._thread.start()
             log.info("模组看门狗已启动（每 %.0f 秒巡一次）", INTERVAL_S)
 
-    def stop(self) -> None:
+    def stop(self, wait: bool = False, timeout: float = 30.0) -> None:
+        """设停止标记；切换智能体时 wait=True，等这一轮巡检真正退出。
+
+        不 wait 的话，旧线程可能正睡在 20 秒的巡检间隔里，切完又把旧模组
+        按旧 registry 拉回来。
+        """
         self._stop.set()
+        thread = self._thread
+        if wait and thread is not None and thread.is_alive() and thread is not threading.current_thread():
+            thread.join(timeout=max(1.0, float(timeout)))
+            if thread.is_alive():
+                log.warning("模组看门狗在 %.0f 秒内没退出，切换继续", timeout)
 
     def _loop(self) -> None:
         # 给开机启动留出时间：刚起来的模组别一上来就被判死。

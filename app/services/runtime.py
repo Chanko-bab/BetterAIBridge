@@ -24,7 +24,7 @@ from typing import Any, Dict, Iterable, Optional
 
 import httpx
 
-from ..core import config
+from ..core import agent_paths, config
 
 log = logging.getLogger("xiaochen")
 
@@ -224,6 +224,8 @@ def _spawn(port: int) -> int:
             "PYTHONUNBUFFERED": "1",
         }
     )
+    # 多智能体：内核必须知道自己读的是哪个 entity，不能只靠 cwd。
+    env.update(agent_paths.module_env())
     logdir = config.APP_DIR / "logs"
     logdir.mkdir(parents=True, exist_ok=True)
     if _boot_handle is None:
@@ -242,6 +244,89 @@ def _spawn(port: int) -> int:
     )
     log.info("已拉起内核 pid=%s port=%s", proc.pid, port)
     return proc.pid
+
+
+def _core_pid(port: int) -> int:
+    """只认“本安装的 core.app”监听者，绝不杀别人的内核。"""
+    try:
+        import psutil  # type: ignore
+    except ImportError:
+        return 0
+    root = str(project()).strip().rstrip("\\").lower()
+    try:
+        conns = psutil.net_connections(kind="tcp")
+    except psutil.Error:
+        return 0
+    for c in conns:
+        try:
+            if c.status != psutil.CONN_LISTEN or not c.laddr or not c.pid:
+                continue
+            if int(c.laddr.port) != int(port):
+                continue
+            proc = psutil.Process(int(c.pid))
+            cmd = " ".join(proc.cmdline()).lower()
+            cwd = str(proc.cwd() or "").strip().rstrip("\\").lower()
+        except (psutil.Error, OSError, ValueError):
+            continue
+        if "core.app" in cmd and cwd.startswith(root):
+            return int(c.pid)
+    return 0
+
+
+def stop(timeout: float = 10.0) -> Dict[str, Any]:
+    """停掉本安装当前内核；切换智能体前必须先停，否则端口被旧内核占着。
+
+    只杀 cwd 在 project_root 下、命令行含 core.app 的进程；端口上是别人的
+    内核时宁可失败也不越界。
+    """
+    url = core_url()
+    port = _port_of(url)
+    health = _probe(url)
+    if not health:
+        _set(state="unknown", port=port, url="", root="", detail="")
+        return {"ok": True, "how": "not_running"}
+    if not is_ours(health):
+        return {"ok": False, "detail": "端口上是另一份安装的内核，不能停"}
+    pid = _core_pid(port)
+    if not pid:
+        return {"ok": False, "detail": "找不到内核进程；可能没有权限"}
+    try:
+        import psutil  # type: ignore
+
+        proc = psutil.Process(pid)
+        kids = proc.children(recursive=True)
+        for item in kids + [proc]:
+            try:
+                item.terminate()
+            except psutil.Error:
+                pass
+        _gone, alive = psutil.wait_procs(kids + [proc], timeout=min(4.0, timeout))
+        for item in alive:
+            try:
+                item.kill()
+            except psutil.Error:
+                pass
+        if alive:
+            psutil.wait_procs(alive, timeout=3.0)
+    except ImportError:
+        return {"ok": False, "detail": "缺少 psutil，无法停内核"}
+    except psutil.Error as exc:
+        return {"ok": False, "detail": f"停内核失败：{exc}"}
+    deadline = time.time() + max(2.0, timeout)
+    while time.time() < deadline:
+        if not _probe(url, 0.6):
+            break
+        time.sleep(0.3)
+    _set(state="unknown", port=port, url="", root="", detail="")
+    return {"ok": not bool(_probe(url, 0.6)), "how": "stopped"}
+
+
+def restart(timeout: float = 45.0) -> Dict[str, Any]:
+    """切换智能体用：停旧内核，按当前 env 重新拉起。"""
+    got = stop()
+    if not got.get("ok"):
+        return got
+    return ensure(timeout=timeout)
 
 
 def ensure(timeout: float = 45.0) -> Dict[str, Any]:

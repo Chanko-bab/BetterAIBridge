@@ -105,6 +105,29 @@ def unbind(mid: str, slug: str | None = None) -> bool:
         return True
 
 
+def owned_by(slug: str) -> list[str]:
+    """这个智能体名下绑定的模组 id；切换出去时用。"""
+    me = str(slug or "").strip()
+    if not me:
+        return []
+    return [str(mid) for mid, who in (load().get("bindings") or {}).items() if str(who) == me]
+
+
+def unbind_all(slug: str) -> list[str]:
+    """释放一个智能体的全部绑定；切到别人前调用，失败只跳过单个。"""
+    me = str(slug or "").strip()
+    if not me:
+        return []
+    done: list[str] = []
+    for mid in owned_by(me):
+        try:
+            if unbind(mid, me):
+                done.append(mid)
+        except BindingError:
+            continue
+    return done
+
+
 def reconcile(existing_slugs: list[str]) -> list[str]:
     """清掉指向已不存在智能体的绑定；返回清掉的 module id。"""
     alive = {str(x) for x in existing_slugs}

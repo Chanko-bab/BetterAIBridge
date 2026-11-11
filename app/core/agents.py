@@ -9,6 +9,7 @@ P0 只做数据层。选择器 UI 在 P1 接这里；本模块不依赖 Qt，也
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import tempfile
 import threading
@@ -92,6 +93,7 @@ def scan() -> List[Dict[str, Any]]:
 
 def load_index(rebuild: bool = True) -> Dict[str, Any]:
     doc = _read_json(index_path(), None)
+    active = str(doc.get("active") or "") if isinstance(doc, dict) else ""
     rows = doc.get("agents") if isinstance(doc, dict) else None
     if isinstance(rows, list) and rows:
         ok = []
@@ -102,11 +104,16 @@ def load_index(rebuild: bool = True) -> Dict[str, Any]:
             if slug and (_agent_dir(slug) / AGENT_FILE).exists():
                 ok.append(row)
         if ok:
-            return {"format": "bab-agents/1", "updated": str(doc.get("updated") or ""), "agents": ok}
+            return {
+                "format": "bab-agents/1",
+                "active": active,
+                "updated": str(doc.get("updated") or ""),
+                "agents": ok,
+            }
     if not rebuild:
-        return {"format": "bab-agents/1", "updated": "", "agents": []}
+        return {"format": "bab-agents/1", "active": active, "updated": "", "agents": []}
     rows = scan()
-    doc = {"format": "bab-agents/1", "updated": _now(), "agents": rows}
+    doc = {"format": "bab-agents/1", "active": active, "updated": _now(), "agents": rows}
     try:
         _write_json(index_path(), doc)
     except OSError:
@@ -115,9 +122,135 @@ def load_index(rebuild: bool = True) -> Dict[str, Any]:
 
 
 def save_index() -> Dict[str, Any]:
-    doc = {"format": "bab-agents/1", "updated": _now(), "agents": scan()}
+    old = _read_json(index_path(), {})
+    active = str(old.get("active") or "") if isinstance(old, dict) else ""
+    doc = {"format": "bab-agents/1", "active": active, "updated": _now(), "agents": scan()}
     _write_json(index_path(), doc)
     return doc
+
+
+def active_slug() -> str:
+    """当前使用的智能体；索引里的 active 失效时返回空。"""
+    doc = _read_json(index_path(), {})
+    slug = str(doc.get("active") or "") if isinstance(doc, dict) else ""
+    if slug and (_agent_dir(slug) / AGENT_FILE).exists():
+        return slug
+    return ""
+
+
+def set_active(slug: str) -> None:
+    """只改“当前用谁”，不启动、不碰进程；空字符串表示回到旧单智能体模式。"""
+    slug = (slug or "").strip()
+    if slug and not (_agent_dir(slug) / AGENT_FILE).exists():
+        raise AgentError("找不到这个智能体")
+    with _LOCK:
+        doc = _read_json(index_path(), {})
+        if not isinstance(doc, dict):
+            doc = {}
+        doc["format"] = "bab-agents/1"
+        doc["active"] = slug
+        doc["updated"] = _now()
+        doc.setdefault("agents", scan())
+        _write_json(index_path(), doc)
+
+
+def get(slug: str) -> Dict[str, Any] | None:
+    root = _agent_dir(slug)
+    if not (root / AGENT_FILE).exists():
+        return None
+    return _entry(root)
+
+
+_ENV_KEYS = ("BAB_AGENTS_ROOT", "BAB_AGENT_ROOT", "BAB_ENTITY", "BAB_BUNDLE", "BAB_AGENT_ID")
+
+
+def snapshot_env() -> Dict[str, str | None]:
+    return {k: os.environ.get(k) for k in _ENV_KEYS}
+
+
+def restore_env(snap: Dict[str, str | None]) -> None:
+    for key in _ENV_KEYS:
+        val = snap.get(key)
+        if val is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = val
+
+
+def apply_env(slug: str) -> None:
+    """让当前进程的 config/framework_setup/模组都指向这个智能体。"""
+    root = _agent_dir(slug)
+    if not (root / AGENT_FILE).exists():
+        raise AgentError("找不到这个智能体")
+    os.environ["BAB_AGENTS_ROOT"] = str(agent_paths.agents_root())
+    os.environ["BAB_AGENT_ROOT"] = str(root)
+    os.environ["BAB_AGENT_ID"] = slug
+    os.environ["BAB_ENTITY"] = str(root / "entity")
+    os.environ["BAB_BUNDLE"] = str(agent_paths.bundle_root())
+
+
+def clear_env() -> None:
+    for key in _ENV_KEYS:
+        os.environ.pop(key, None)
+
+
+def is_configured(slug: str) -> bool:
+    """不切 env 也能问：这个智能体有没有 Key + 非占位人格。"""
+    root = _agent_dir(slug)
+    try:
+        llm = json.loads((root / "entity" / "config" / "llm.json").read_text(encoding="utf-8-sig"))
+        if not str((llm or {}).get("api_key") or "").strip():
+            return False
+    except (OSError, ValueError):
+        return False
+    try:
+        txt = (root / "entity" / "persona" / "persona.md").read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return bool(txt.strip()) and "PLACEHOLDER" not in txt and "{{" not in txt
+
+
+def activate(slug: str) -> Dict[str, Any]:
+    """设置 env、写 active、更新 last_used；进程/内核由调用方负责重启。"""
+    entry = get(slug)
+    if not entry:
+        raise AgentError("找不到这个智能体")
+    apply_env(slug)
+    set_active(slug)
+    set_last_used(slug)
+    return entry
+
+
+def boot() -> str:
+    """启动器最早调用：恢复 active；没有智能体且没有旧目录时建一个默认的。
+
+    旧安装仍保留 WiseEntity/entity 时故意不自动挑一个智能体，避免启动器
+    在用户没确认前把旧数据“藏”到 agents/ 下；迁移由显式工具/界面完成。
+    """
+    purge_trash()
+    slug = active_slug()
+    if slug:
+        try:
+            activate(slug)
+            return slug
+        except AgentError:
+            set_active("")
+    legacy = agent_paths.install_root() / "WiseEntity" / "entity"
+    rows = scan()
+    if rows and not legacy.exists():
+        try:
+            activate(rows[0]["slug"])
+            return rows[0]["slug"]
+        except AgentError:
+            pass
+    if not rows and not legacy.exists():
+        try:
+            entry = create_agent("我的智能体")
+            activate(entry["slug"])
+            return entry["slug"]
+        except AgentError:
+            return ""
+    return ""
 
 
 def _unique_slug(name: str) -> str:
@@ -213,6 +346,8 @@ def trash_agent(slug: str) -> Path:
             },
         )
         save_index()
+        if active_slug() == slug:
+            set_active("")
         return dest
 
 
@@ -396,5 +531,6 @@ def migrate_legacy(root: str | Path | None = None, dry_run: bool = False) -> Dic
         except (RuntimeError, OSError):
             pass
     save_index()
+    set_active(slug)
     plan["backup"] = str(backup)
     return plan
