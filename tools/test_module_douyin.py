@@ -90,6 +90,7 @@ def behaviour() -> None:
     for name in ("server", "browser", "scrape"):
         sys.modules.pop(name, None)
     srv = importlib.import_module("server")
+    real_im_read = srv.scrape.im_read
 
     srv.settings = lambda: {
         "owner_name": "小王", "owner_uid": "u1", "enable_dm": True,
@@ -157,6 +158,24 @@ def behaviour() -> None:
 
     out = srv.do_dm_read({"target": "小王"})
     check(out["items"][0]["images"][0].get("ref"), "私信图片没换成 ref")
+
+    # im_read 之前只在“当前页恰好是消息页”时才找会话，从首页读私聊会
+    # 报“没找到会话”。这里锁住“先打开消息页”的行为。
+    nav: list[str] = []
+    old_goto = srv.scrape._im_goto
+    srv.scrape._im_goto = lambda sess: (nav.append("goto"), "https://www.douyin.com/messages")[1]
+
+    class _Sess:
+        def js(self, script, timeout=0):
+            if "const target" in script:
+                return {"ok": True, "name": "小王"}
+            return []
+
+    try:
+        real_im_read(_Sess(), "小王", 5)
+    finally:
+        srv.scrape._im_goto = old_goto
+    check(bool(nav), "im_read 没有先打开消息页（会误报找不到会话）")
 
     # 火花：今天一次
     srv.call_cap = lambda cap, args=None, timeout=8.0: {"ok": True, "text": "今天也想你"}
