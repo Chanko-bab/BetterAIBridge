@@ -94,7 +94,7 @@ class WindowLoginDialog(QDialog):
         self.btn_front.setEnabled(True)
 
         def work():
-            with httpx.Client(timeout=30.0) as c:
+            with httpx.Client(timeout=75.0) as c:
                 r = c.post(f"{self.base}/login/qr")
                 r.raise_for_status()
                 return r.json()
