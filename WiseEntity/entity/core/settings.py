@@ -19,7 +19,18 @@ ROOT = APP_ROOT / "WiseEntity"
 
 # 0.4.19 起数据回到安装目录（每个安装一份）；install.json 只留 install_id 与端口。
 _INSTALL_PATH = APP_ROOT / "config" / "install.json"
-ENTITY = ROOT / "entity"
+
+# 多智能体：程序根仍是 APP_ROOT；数据根由启动器通过 BAB_AGENT_ROOT 传入。
+# 没有设置时保持旧行为，旧安装/旧测试不用改。
+_AGENT_ROOT = (os.environ.get("BAB_AGENT_ROOT") or "").strip()
+AGENT_ROOT = Path(_AGENT_ROOT) if _AGENT_ROOT else None
+AGENT_ID = (os.environ.get("BAB_AGENT_ID") or "").strip()
+_BAB_ENTITY = (os.environ.get("BAB_ENTITY") or "").strip()
+ENTITY = (
+    Path(_BAB_ENTITY)
+    if _BAB_ENTITY
+    else ((AGENT_ROOT / "entity") if AGENT_ROOT is not None else ROOT / "entity")
+)
 BRAIN_DIR = ENTITY / "brain"
 CORE_DIR = ENTITY / "core"
 MEM_DIR = ENTITY / "memory"
@@ -28,7 +39,7 @@ PERSONA_PATH = ENTITY / "persona" / "persona.md"
 LOGS = ROOT / "runtime" / "logs"
 LOG_PATH = LOGS / "entity_core.log"
 
-BUNDLE = APP_ROOT / "program_bundle"
+BUNDLE = Path(os.environ.get("BAB_BUNDLE") or (APP_ROOT / "program_bundle"))
 PROGRAM_CACHE = APP_ROOT / "program_cache"
 
 BRAIN_STATE = BRAIN_DIR / "flybrain_state.json"

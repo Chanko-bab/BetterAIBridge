@@ -57,3 +57,9 @@ config/sense.json
 /packaging/bab.sed
 WiseEntity/entity/persona/persona.md
 WiseEntity/capability/stomach/stomach.json
+
+# ---- 多智能体运行时数据（不进仓库、不进安装包）----
+agents/
+agents.json
+modules.bindings.json
+backups/pre-agents-*.zip

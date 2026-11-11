@@ -9,7 +9,7 @@
 
 - 有安装包：`BetterAIBridge-Setup-0.6.5.exe`（IExpress 自解压，安装目录默认在 `%LOCALAPPDATA%`）。
 - 有源码运行：`setup.cmd` 建壳/内核/语音三个 venv，`start.cmd` 启动。
-- 自检 **96 套**，全量约 150 秒；`build.ps1` 出包前会先跑一遍。
+- 自检 **100 套**，全量约 150 秒；`build.ps1` 出包前会先跑一遍。
 - 安装目录内的 `WiseEntity/entity/` 是她的数据：人格、记忆、情绪、自我、状态；卸载时默认保留。
 - 不是“另一个聊天壳”：壳只负责窗口和桥，内核负责她是谁、记得什么、现在什么情绪。
 
@@ -149,7 +149,7 @@ BetterAIBridge/
 ## 自检与出包
 
 ```powershell
-.\.venv\Scripts\python.exe tools\check.py          # 96 套全跑，出张表
+.\.venv\Scripts\python.exe tools\check.py          # 100 套全跑，出张表
 .\.venv\Scripts\python.exe tools\check.py --list   # 有哪些
 .\.venv\Scripts\python.exe tools\check.py --only memory,styles
 ```

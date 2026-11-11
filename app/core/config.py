@@ -13,6 +13,8 @@ from typing import Any, Dict
 
 import yaml
 
+from . import agent_paths
+
 APP_DIR = Path(__file__).resolve().parents[2]
 CONFIG_DIR = APP_DIR / "config"
 CONFIG_PATH = CONFIG_DIR / "app.yaml"
@@ -34,8 +36,12 @@ def data_root() -> Path | None:
 
 
 def entity_dir() -> Path:
-    """人格/记忆/配置/模组所在目录：永远在程序目录的 WiseEntity/entity。"""
-    return project_root() / "entity"
+    """人格/记忆/配置所在目录。
+
+    多智能体：BAB_AGENT_ROOT/entity（或 BAB_ENTITY）；没有设置时回退旧的
+    ``WiseEntity/entity``。程序根与数据根分开，``BAB_ROOT`` 仍是程序根。
+    """
+    return agent_paths.entity_root()
 
 
 def _defaults() -> Dict[str, Any]:

@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
-from . import config
+from . import agent_paths, config
 
 LOCK = threading.RLock()
 
@@ -26,6 +26,13 @@ STATE_LABEL = {
 
 
 def path() -> Path:
+    """多智能体：每个智能体一份 registry；程序包仍在共享 bundle。
+
+    没有 BAB_AGENT_ROOT 时回退旧的 program_bundle/registry.json。
+    """
+    root = agent_paths.agent_root()
+    if root is not None:
+        return root / "program_bundle" / "registry.json"
     return config.bundle_dir() / "registry.json"
 
 

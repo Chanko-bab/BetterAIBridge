@@ -187,6 +187,14 @@ SUITES = [
          "启动预算：只建聊天页、控件 <200、埋点齐全"),
         ("a11y", "tools/test_a11y.py", "gui",
          "可访问性：图标按钮有名字，可点击标题能键盘触发"),
+        ("agent_paths", "tools/test_agent_paths.py", "any",
+         "多智能体路径：BAB_ROOT 不变、数据根/env 优先级、slug 安全"),
+        ("bindings", "tools/test_bindings.py", "any",
+         "模组绑定：排他、解绑、reconcile 清掉已删智能体"),
+        ("agents", "tools/test_agents.py", "any",
+         "智能体档案：创建/索引/导出不含 Key/回收站 7 天/构建排除"),
+        ("agent_migration", "tools/test_agent_migration.py", "any",
+         "旧安装迁移：dry-run、人格/Key/registry、绑定、备份、回滚边界"),
 ]
 
 

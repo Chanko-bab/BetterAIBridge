@@ -47,7 +47,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
-from . import config, logger, registry, winproc
+from . import agent_paths, bindings, config, logger, registry, winproc
 from .pbab_process import (
     _install_base,
     _kill_module_procs,
@@ -1678,6 +1678,10 @@ def _enable_unlocked(mid: str) -> Dict[str, Any]:
     mod = registry.get(mid)
     if not mod:
         raise PbabError("模组没装")
+    try:
+        bindings.ensure_free(mid)
+    except bindings.BindingError as exc:
+        raise PbabError(str(exc)) from exc
     if str(mod.get("state") or "") == "enabled":
         _pid = mod.get("pid")
         try:
@@ -1727,6 +1731,7 @@ def _enable_unlocked(mid: str) -> Dict[str, Any]:
             if runtime_port:
                 env["BAB_MODULE_PORT"] = str(runtime_port)
             env["BAB_CORE_PORT"] = str(_core_port())
+            env.update(agent_paths.module_env())
             proc = subprocess.Popen(
                 ["cmd", "/c", str(cmd_path)],
                 cwd=str(cmd_path.parent),
@@ -1780,6 +1785,10 @@ def _enable_unlocked(mid: str) -> Dict[str, Any]:
         _note_event(mod, state)
         log.info("模组启用 %s state=%s pid=%s", mid, state, pid)
         if state == "enabled":
+            try:
+                bindings.bind(mid)
+            except bindings.BindingError as exc:
+                log.warning("模组 %s 绑定失败：%s", mid, exc)
             try:
                 notify_nanny(registry.get(mid) or mod, "register")
             except Exception:
@@ -1898,7 +1907,7 @@ def notify_nanny(mod: dict, action: str = "register") -> None:
 def _note_event(mod: Dict[str, Any], state: str) -> None:
     """记一笔模组开关，供提示词说「刚刚变了」。"""
     try:
-        p = config.APP_DIR / "WiseEntity" / "entity" / "state" / "module_events.jsonl"
+        p = config.entity_dir() / "state" / "module_events.jsonl"
         p.parent.mkdir(parents=True, exist_ok=True)
         row = {
             "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -1938,5 +1947,6 @@ def uninstall(mid: str) -> None:
     if dl.exists():
         shutil.rmtree(dl, ignore_errors=True)
     registry.remove(mid)
+    bindings.unbind(mid)
     notify_nanny(mod, "unregister")
     log.info("模组已完全卸载 %s", mid)
