@@ -128,7 +128,7 @@ SUITES = [
     ("emotion_bridge", "tools/test_emotion_bridge.py", "kernel", "情绪接线：6 调质 → 13 维、量程、推力上限"),
     ("calm_model", "tools/test_calm_model.py", "kernel", "理智：分档、人格基线、软饱和、存档迁移、调质上限"),
     ("emotion_prompt", "tools/test_emotion_prompt.py", "kernel",
-     "情绪/驱动提示词：平静为空、750 才出现、跨档才重复、理智同档不重复、驱动 ≥0.6 只一条"),
+     "情绪/驱动提示词：三段上升、三段下降、高原提醒、理智同档不重复、驱动 ≥0.6 只一条"),
     ("local_tts", "tools/test_local_tts.py", "any",
      "本地语音包：端口/清单/假 sidecar 合成 WAV/缓存/格式识别"),
     ("local_tts_job", "tools/test_local_tts_job.py", "gui",

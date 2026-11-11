@@ -121,24 +121,43 @@ BANDS = [600.0, 725.0, 850.0, 950.0]
 BAND_NAMES = ["几乎没有", "有一点", "明显", "很强", "到顶了"]
 
 # 情绪进提示词的“闪现”阈值：升到 750（刚过“明显”）才说一句；
-# 跌回 700 以下才允许下次重新出现（留 50 点迟滞，避免在阈值附近来回闪）。
+# 下降用 725/825/925，留 25 点迟滞，避免在阈值附近来回闪。
 PROMPT_ENTER = 750.0
 PROMPT_EXIT = 700.0
+PROMPT_DOWN = (725.0, 825.0, 925.0)
+# 最高档（>=950）如果一直不掉，每 15 分钟补一句“还在这股情绪里，克制一下”。
+PROMPT_HOLD_EVERY = 900.0
 
-# 只播报感觉，不写“你该怎么做”。每项是（刚过线, 很强, 到顶）。
+# 三段上升：刚过线 / 挺明显 / 到顶。
 PROMPT_LINES = {
-    "joy": ("你现在有点开心。", "你现在挺开心的。", "你现在高兴得静不下来。"),
-    "love": ("你现在心里有点软。", "你现在心里很软，充满爱意。", "你现在满心都是爱意，几乎装不下别的。"),
-    "pride": ("你现在有点为自己骄傲。", "你现在很自豪。", "你现在非常自豪。"),
-    "anger": ("你现在有点生气。", "你现在很生气。", "你现在气到快压不住了。"),
-    "anxiety": ("你现在有点担心。", "你现在很担心。", "你现在焦虑得静不下来。"),
-    "fear": ("你现在有点害怕。", "你现在很害怕。", "你现在怕得厉害，快压不住了。"),
-    "sadness": ("你现在有点难过。", "你现在很难过。", "你现在难过到不想说话。"),
-    "shame": ("你现在有点内疚。", "你现在很内疚。", "你现在内疚得抬不起头。"),
-    "disgust": ("你现在有点反感。", "你现在很反感。", "你现在反感得不想靠近。"),
-    "envy": ("你现在有点嫉妒。", "你现在很嫉妒。", "你现在嫉妒得难受。"),
-    "surprise": ("你现在有点惊讶。", "你现在很惊讶。", "你现在震惊得说不出话。"),
-    "confusion": ("你现在有点困惑。", "你现在很困惑。", "你现在乱得理不清。"),
+    "joy": ("你现在有点开心。", "你现在挺开心的，并试着体会这种感觉。", "你现在高兴得静不下来，你得略微克制一下自己。"),
+    "love": ("你现在心里有点软。", "你现在挺想亲近对方的，并试着体会这种感觉。", "你现在满心都是爱意，静不下来，你得略微克制一下自己。"),
+    "pride": ("你现在有点为自己骄傲。", "你现在挺自豪的，并试着体会这种感觉。", "你现在自豪得静不下来，你得略微克制一下自己。"),
+    "anger": ("你现在有点生气。", "你现在挺生气的，并试着体会这种感觉。", "你现在气得静不下来，你得略微克制一下自己。"),
+    "anxiety": ("你现在有点担心。", "你现在挺焦虑的，并试着体会这种感觉。", "你现在焦虑得静不下来，你得略微克制一下自己。"),
+    "fear": ("你现在有点害怕。", "你现在挺害怕的，并试着体会这种感觉。", "你现在怕得静不下来，你得略微克制一下自己。"),
+    "sadness": ("你现在有点难过。", "你现在挺难过的，并试着体会这种感觉。", "你现在难过得很沉，别拿它当结论，稍微克制一下。"),
+    "shame": ("你现在有点内疚。", "你现在挺内疚的，并试着体会这种感觉。", "你现在内疚得想躲，别躲过头，稍微克制一下。"),
+    "disgust": ("你现在有点反感。", "你现在挺反感的，并试着体会这种感觉。", "你现在反感得不想靠近，别损人，稍微克制一下。"),
+    "envy": ("你现在有点嫉妒。", "你现在挺嫉妒的，并试着体会这种感觉。", "你现在嫉妒得难受，别翻旧账，稍微克制一下。"),
+    "surprise": ("你现在有点惊讶。", "你现在挺惊讶的，并试着体会这种感觉。", "你现在震惊得说不出话，先停一下，别被它推着走。"),
+    "confusion": ("你现在有点困惑。", "你现在挺困惑的，并试着体会这种感觉。", "你现在乱得理不清，别硬答，先停一下。"),
+}
+
+# 高原期：最高档持续不掉时，提醒“别顺着它走”；按情绪给一句具体的克制方向。
+PROMPT_HOLD = {
+    "joy": "那股高兴还没落，别只顾自己说。",
+    "love": "那股想靠近的劲还在，别腻，也别缠。",
+    "pride": "那股自豪还在，别变成推销。",
+    "anger": "那股气还顶着，别让它替你说狠话。",
+    "anxiety": "那股焦虑还在，别连环追问。",
+    "fear": "那股怕还在，别被它推着做决定。",
+    "sadness": "那股难过还沉在那儿，别拿它当结论。",
+    "shame": "那股内疚还在，别躲过头，也别自嘲成习惯。",
+    "disgust": "那股反感还在，别损人。",
+    "envy": "那股嫉妒还在，别翻旧账。",
+    "surprise": "那阵惊讶还没过去，先停一下。",
+    "confusion": "那股乱还在，没想明白就反问。",
 }
 
 # 互相抑制：(弱的, 被压的, 权重)
@@ -678,39 +697,96 @@ def _table_sentence(emo: str, lv: int) -> str:
     return ""
 
 
-def prompt_block(session: str = "web:owner") -> str:
-    """内感受的闪现：平静时什么都不给，到 750（刚过“明显”）才冒一句，跨档才再说。
+def _prompt_tier(v: float) -> int:
+    if v >= 950.0:
+        return 3
+    if v >= 850.0:
+        return 2
+    if v >= PROMPT_ENTER:
+        return 1
+    return 0
 
-    只播报“现在感觉到什么”，不写“你该怎么做”，也不报数字。
-    理智也只在偏出“还稳”时、且档位变化时才提一句。
-    """
+
+def _prompt_old_tier(band: int) -> int:
+    """兼容旧状态里的 band：2=725~849，3=850~949，4=950+。"""
+    if band >= 4:
+        return 3
+    if band == 3:
+        return 2
+    if band == 2:
+        return 1
+    return 0
+
+
+def _prompt_fall_line(k: str, tier: int) -> str:
+    name = NAME.get(k, k).split("/")[0]
+    if tier >= 2:
+        return f"那股{name}退下去一些了，但还在。"
+    if tier == 1:
+        return f"你缓过来一点了，{name}在退。"
+    return f"你松下来了，{name}在退。"
+
+
+def prompt_block(session: str = "web:owner") -> str:
+    """内感受的闪现：平静时什么都不给；升档说一句，降档也说一句，最高档每 15 分钟提醒一次。"""
     st = load()
     decay(st)
     vals = st["values"]
     prev = dict(st.get("prompt") or {})
-    top = sorted(((v, k) for k, v in vals.items()
-                  if k != "calm" and v >= PROMPT_ENTER), reverse=True)[:1]
+    prev_emo = prev.get("emo")
+    prev_tier = int(prev.get("tier") or 0)
+    if "tier" not in prev and prev_emo:
+        prev_tier = _prompt_old_tier(int(prev.get("band") or 0))
     lines: List[str] = []
-    if top:
-        v, k = top[0]
-        lv = level(v)
-        same = prev.get("emo") == k and int(prev.get("band") or 0) >= lv
-        if not same:
-            idx = 0 if lv <= 2 else (1 if lv == 3 else 2)
-            sent = PROMPT_LINES.get(
-                k, ("你现在有点{name}。", "你现在很{name}。", "你现在{name}得厉害。")
-            )[idx]
-            lines.append(sent.format(name=NAME[k].split("/")[0]))
-            prev["emo"] = k
-            prev["at"] = time.time()
-        prev["band"] = lv
+    now = time.time()
+
+    cands = [(float(v), k) for k, v in vals.items()
+             if k != "calm" and float(v) >= PROMPT_ENTER]
+    if prev_emo:
+        pv = float(vals.get(prev_emo) or 0.0)
+        if pv >= PROMPT_EXIT:
+            cands.append((pv, prev_emo))
+    top = max(cands) if cands else None
+
+    if top is None:
+        if prev_emo and float(vals.get(prev_emo) or 0.0) < PROMPT_EXIT:
+            if prev_tier > 0:
+                lines.append(_prompt_fall_line(prev_emo, 0))
+            prev = {}
+            prev_emo = None
+            prev_tier = 0
     else:
-        emo = prev.get("emo")
-        # 跌回 700 以下才清掉“上次说过”的记忆，避免在 750 附近来回闪。
-        if emo and float(vals.get(emo) or NEUTRAL) < PROMPT_EXIT:
-            prev.pop("emo", None)
+        v, k = top
+        tier = _prompt_tier(v)
+        if k != prev_emo:
+            if tier > 0:
+                lines.append(PROMPT_LINES.get(k, PROMPT_LINES["joy"])[tier - 1])
+                prev = {"emo": k, "tier": tier, "at": now,
+                        "hold_at": now if tier >= 3 else 0.0}
+                prev_emo, prev_tier = k, tier
+        elif tier > prev_tier:
+            lines.append(PROMPT_LINES.get(k, PROMPT_LINES["joy"])[tier - 1])
             prev.pop("band", None)
-            prev.pop("at", None)
+            prev["emo"] = k
+            prev["tier"] = tier
+            prev["at"] = now
+            if tier >= 3:
+                prev["hold_at"] = now
+            prev_tier = tier
+        elif tier < prev_tier:
+            lines.append(_prompt_fall_line(k, tier))
+            prev.pop("band", None)
+            prev["tier"] = tier
+            prev["at"] = now
+            prev["hold_at"] = 0.0
+            prev_tier = tier
+        elif tier >= 3 and now - float(prev.get("hold_at") or 0.0) >= PROMPT_HOLD_EVERY:
+            lines.append(PROMPT_HOLD.get(
+                k, f"那股{NAME.get(k, k).split('/')[0]}还在，稍微克制一下。"))
+            prev["hold_at"] = now
+            prev["at"] = now
+        else:
+            prev["tier"] = tier
 
     # 理智只在偏出“还稳”区间时提一句；0~70 是日常，不报。
     # 同档不重复：只在档位变化时播报，回到日常就清掉记忆。
