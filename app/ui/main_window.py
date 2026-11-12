@@ -35,7 +35,6 @@ from .widgets.titlebar import TitleBar
 
 NAV = [
     ("chat", "聊天"),
-    ("agents", "智能体"),
     ("mods", "模组"),
     ("services", "服务"),
     ("settings", "设置"),
@@ -90,6 +89,7 @@ class MainWindow(QMainWindow):
         self._tray_hint_shown = False
         self._quitting = False
         self._switching = False
+        self._picker_return = False
         # 内核看门狗：连续几次探测不到才拉，别把抖动当故障
         self._core_down = 0
         self._last_core_restart = 0.0
@@ -148,6 +148,11 @@ class MainWindow(QMainWindow):
             btn.clicked.connect(lambda _c=False, k=key: self.show_page(k))
             self.buttons[key] = btn
             side_lay.addWidget(btn)
+        self.btn_picker = QPushButton("退出到选择界面", objectName="Nav")
+        self.btn_picker.setCursor(Qt.PointingHandCursor)
+        self.btn_picker.setToolTip("回到启动时的智能体选择界面")
+        self.btn_picker.clicked.connect(self.leave_to_picker)
+        side_lay.addWidget(self.btn_picker)
         # 侧栏按钮按视觉顺序走 Tab，别让焦点乱跳。
         nav_order = [self.buttons[k] for k, _t in (NAV + NAV_BOTTOM) if k in self.buttons]
         for a, b in zip(nav_order, nav_order[1:]):
@@ -173,7 +178,6 @@ class MainWindow(QMainWindow):
         # 设置页一个就有 349 个控件，全量预建是启动慢和内存高的主因。
         self._page_specs = {
             "chat": ("chat", "ChatPage"),
-            "agents": ("agents", "AgentsPage"),
             "mods": ("mods", "ModsPage"),
             "services": ("services", "ServicesPage"),
             "appearance": ("appearance", "AppearancePage"),
@@ -313,7 +317,7 @@ class MainWindow(QMainWindow):
         except Exception:  # noqa: BLE001
             self.log.warning("刷新头像卡失败", exc_info=True)
 
-    def switch_agent(self, slug: str) -> bool:
+    def switch_agent(self, slug: str, ask_onboard: bool = True) -> bool:
         """切换智能体：停旧内核/模组 → 换 env/active → 重启 → 刷新界面。
 
         返回 False 只表示“没开始切”（同一个、没建档又取消、正在切）；
@@ -338,13 +342,14 @@ class MainWindow(QMainWindow):
             self.refresh_identity()
             return False
         if not agents.is_configured(slug):
-            choice = QMessageBox.question(
-                self, "还没建档",
-                "这个智能体还没有 API Key 或人格。要现在建档吗？\n"
-                "建档写的是它自己的目录，不会动现在这个。",
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
-            if choice != QMessageBox.Yes:
-                return False
+            if ask_onboard:
+                choice = QMessageBox.question(
+                    self, "还没建档",
+                    "这个智能体还没有 API Key 或人格。要现在建档吗？\n"
+                    "建档写的是它自己的目录，不会动现在这个。",
+                    QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+                if choice != QMessageBox.Yes:
+                    return False
             if not self._onboard_agent(slug):
                 return False
         self._switching = True
@@ -422,6 +427,11 @@ class MainWindow(QMainWindow):
 
     def _after_switch(self, slug: str, result: Dict[str, object]) -> None:
         self._switching = False
+        if getattr(self, "_picker_return", False):
+            self._picker_return = False
+            self.show()
+            self.raise_()
+            self.activateWindow()
         self.refresh_identity()
         chat = self.pages.get("chat")
         if chat is not None:
@@ -431,12 +441,6 @@ class MainWindow(QMainWindow):
                 reset_chat(chat)
             except (RuntimeError, AttributeError, TypeError, OSError) as exc:
                 self.log.warning("刷新聊天页失败：%s", exc)
-        page = self.pages.get("agents")
-        if page is not None and hasattr(page, "refresh"):
-            try:
-                page.refresh()
-            except (RuntimeError, AttributeError, ValueError, OSError) as exc:
-                self.log.warning("刷新智能体页失败：%s", exc)
         if result.get("ok"):
             self.foot_label.setText("已切换智能体")
         else:
@@ -445,6 +449,53 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "切换完成，但内核没起来", detail)
         self.refresh_ports()
         self.refresh_state()
+
+    def leave_to_picker(self) -> None:
+        """回到启动时的选择窗口；选中别人就走现有切换链路。"""
+        if getattr(self, "_switching", False):
+            QMessageBox.information(self, "正在切换", "上一次切换还没完成，稍等一下。")
+            return
+        from ..core import agents
+        from .agent_picker import AgentPicker
+
+        self.hide()
+        dlg = AgentPicker(None)
+        if not dlg.exec():
+            self.show()
+            self.raise_()
+            self.activateWindow()
+            return
+        slug = str(dlg.selected or "").strip()
+        current = agents.active_slug()
+        if not slug:
+            if current:
+                QMessageBox.information(
+                    self, "还是旧目录",
+                    "旧单目录的 Key/人格还在 WiseEntity\\entity；"
+                    "迁移完成后才能从多智能体切过去。")
+            self.show()
+            self.raise_()
+            self.activateWindow()
+            return
+        if slug == current:
+            self.show()
+            self.raise_()
+            self.activateWindow()
+            return
+        unconfigured = not agents.is_configured(slug)
+        if unconfigured:
+            # 建档向导要挂在可见主窗口上；建完再继续后台切换。
+            self.show()
+            self.raise_()
+        self._picker_return = True
+        if not self.switch_agent(slug, ask_onboard=False):
+            self._picker_return = False
+            self.show()
+            self.raise_()
+            self.activateWindow()
+            return
+        if unconfigured:
+            self.hide()
 
     def open_avatar_dialog(self) -> None:
         try:

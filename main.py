@@ -156,6 +156,7 @@ def main() -> int:
         return 0
 
     # 多智能体：先恢复当前智能体的 env/active，再碰 registry（registry 按智能体分目录）。
+    _agents = None
     try:
         from app.core import agents as _agents
 
@@ -164,6 +165,35 @@ def main() -> int:
             log.info("当前智能体：%s", _active)
     except Exception:  # noqa: BLE001
         log.warning("恢复当前智能体失败，按旧目录启动", exc_info=True)
+
+    # 每次启动先选智能体：选择窗独立于主窗口和 registry，选完才继续。
+    if not os_env_smoke():
+        try:
+            from app.ui.agent_picker import AgentPicker
+
+            picker = AgentPicker(None)
+            if not picker.exec():
+                log.info("没有选择智能体，退出")
+                lock.unlock()
+                return 0
+            if picker.selected:
+                if _agents is None:
+                    raise RuntimeError("智能体模块没有加载")
+                _agents.activate(picker.selected)
+                log.info("选择智能体：%s", picker.selected)
+            elif _agents is not None and _agents.active_slug():
+                _agents.clear_env()
+                _agents.set_active("")
+                log.info("选择进入旧单目录")
+        except Exception as exc:  # noqa: BLE001
+            detail = traceback.format_exc()
+            log.error("智能体选择失败：\n%s", detail)
+            QMessageBox.critical(
+                None, "选择智能体失败",
+                "没能打开智能体选择窗口，程序不会启动。\n\n"
+                f"原因：{exc}\n\n详细错误已写到 logs\\startup-error.log。")
+            lock.unlock()
+            return 1
 
     # 改过名的模组（0.4.0：m -> m_framework）：先迁 registry 和安装目录，再建界面
     try:

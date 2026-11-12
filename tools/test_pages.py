@@ -40,10 +40,8 @@ def _dead_client_init(self, base=None, timeout=8.0):
 
 
 _core_client.CoreClient.__init__ = _dead_client_init
-
-NAV_PAGES = ("chat", "mods", "services", "agents", "logs", "settings", "details")
+NAV_PAGES = ("chat", "mods", "services", "logs", "settings", "details")
 MIN_NAV_HEIGHT = 34  # 13px 字 + 上下各 9px padding，低于这个数就会裁字
-
 fails: list[str] = []
 
 
@@ -83,7 +81,9 @@ def main() -> int:
     win = MainWindow()
     win.show()
     app.processEvents()
-
+    # 智能体选择在启动前置窗口，主窗口侧栏不再有「智能体」页。
+    check("agents" not in win.buttons and getattr(win, "btn_picker", None) is not None,
+          "侧栏没有智能体页，并有「退出到选择界面」按钮")
     # --- 1. 每个页面都必须真的进了 QStackedWidget，否则 show_page 是空操作
     check(win.titlebar.title_label.text() == "Better AI Bridge Launcher",
           f"标题栏固定写 Better AI Bridge Launcher（实际 {win.titlebar.title_label.text()!r}）")
