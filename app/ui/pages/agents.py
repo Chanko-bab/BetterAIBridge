@@ -214,11 +214,21 @@ class AgentsPage(QWidget):
         self.refresh()
 
     def _show_migrate_help(self) -> None:
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        root = agent_paths.install_root()
+        py = root / ".venv" / "Scripts" / "python.exe"
+        if not py.exists():
+            py = Path(sys.executable)
+        script = root / "tools" / "migrate_agents.py"
+        command = subprocess.list2cmdline(
+            [str(py), "-X", "utf8", str(script), "--dry-run"])
         QMessageBox.information(
             self, "迁移旧目录",
             "先在启动器里退出，再运行：\n\n"
-            "D:\\BetterAIBridge\\.venv\\Scripts\\python.exe -X utf8 "
-            "D:\\BetterAIBridge\\tools\\migrate_agents.py --dry-run\n\n"
+            f"{command}\n\n"
             "确认输出后去掉 --dry-run。脚本会先备份 WiseEntity\\entity，"
             "失败会回滚。")
 

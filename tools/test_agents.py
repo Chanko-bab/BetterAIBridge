@@ -125,6 +125,9 @@ def main() -> int:
             check("'agents'" in build or "\"agents\"" in build, "出包应跳过 agents/")
             check("agents.json" in build and "modules.bindings.json" in build,
                   "出包不应带索引/绑定表")
+            help_src = (ROOT / "app" / "ui" / "pages" / "agents.py").read_text(encoding="utf-8")
+            check(r"D:\BetterAIBridge" not in help_src, "迁移命令不应写死开发目录")
+            check("agent_paths.install_root()" in help_src, "迁移命令应跟随当前安装根")
     finally:
         for k, v in old.items():
             if v is None:
