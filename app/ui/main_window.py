@@ -223,6 +223,12 @@ class MainWindow(QMainWindow):
         self.tray.activated.connect(self._on_tray_activated)
         self.tray.show()
 
+        # 第二次双击快捷方式时，第一个实例通过这个定时器回到前台。
+        self.timer_show = QTimer(self)
+        self.timer_show.setInterval(300)
+        self.timer_show.timeout.connect(self._poll_show_request)
+        self.timer_show.start()
+
         self.show_page(str(config.get("ui.start_page", "chat")))
         if self.stack.currentWidget() is not self.pages.get("chat"):
             self.show_page("chat")
@@ -746,6 +752,16 @@ class MainWindow(QMainWindow):
         run_async(lambda: CoreClient().proactive_last(), on_ok=ok,
                   on_err=lambda _e: None)
 
+    def _poll_show_request(self) -> None:
+        from ..core import instance
+
+        if not instance.consume_show(config.DATA_DIR):
+            return
+        if not self.isVisible() or self.isMinimized():
+            self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
     def _tray_usable(self) -> bool:
         try:
             return QSystemTrayIcon.isSystemTrayAvailable() and self.tray.isVisible()
@@ -789,12 +805,14 @@ class MainWindow(QMainWindow):
 
     def quit_app(self) -> None:
         self._quitting = True
+        # 先让窗口消失，用户不用盯着清理过程；锁会随进程退出释放。
+        self.hide()
         try:
             self.tray.hide()
         except Exception:  # noqa: BLE001
             self.log.debug("退出时隐藏托盘图标失败", exc_info=True)
         self._save_window_size()
-        for name in ("timer_ports", "timer_state", "timer_bridge", "timer_tray", "timer_time"):
+        for name in ("timer_ports", "timer_state", "timer_bridge", "timer_tray", "timer_time", "timer_show"):
             t = getattr(self, name, None)
             if t is not None:
                 try:
@@ -803,18 +821,18 @@ class MainWindow(QMainWindow):
                     self.log.debug("退出时停止 %s 失败", name, exc_info=True)
         # 退出前同步发一次离开状态：原来的异步请求会被 400ms 后的 quit 截断。
         try:
-            CoreClient(timeout=1.2).time_shutdown()
+            CoreClient(timeout=0.25).time_shutdown(timeout=0.25)
         except (CoreUnavailable, OSError, ValueError):  # noqa: BLE001
             self.log.warning("退出前记录关闭时间失败", exc_info=True)
         try:
-            CoreClient(timeout=1.2).set_presence("away")
+            CoreClient(timeout=0.25).set_presence("away", timeout=0.25)
         except Exception:  # noqa: BLE001
             self.log.warning("退出前发送离开状态失败", exc_info=True)
         # 本地 MOSS 是 Popen 子进程，不主动收会一直占 18084 和内存。
         try:
             from ..core import local_tts
 
-            local_tts.stop()
+            local_tts.stop(timeout=1.0, probe=False)
         except Exception:  # noqa: BLE001
             self.log.warning("退出时停止本地语音失败", exc_info=True)
         try:
@@ -829,8 +847,8 @@ class MainWindow(QMainWindow):
             voice_store.purge_temp()
         except Exception:  # noqa: BLE001
             self.log.debug("退出时清理临时语音失败", exc_info=True)
-        QTimer.singleShot(150, self.close)
-        QTimer.singleShot(400, lambda: __import__("PySide6.QtWidgets", fromlist=["QApplication"]).QApplication.quit())
+        QTimer.singleShot(50, self.close)
+        QTimer.singleShot(80, QApplication.quit)
 
     def closeEvent(self, e) -> None:  # noqa: N802
         # 点 × 只收进托盘；真正退出走托盘菜单

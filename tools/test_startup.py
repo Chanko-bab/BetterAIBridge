@@ -5,6 +5,7 @@ r"""开机自启与启动器配置项。
 """
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -13,7 +14,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.dont_write_bytecode = True
 
-from app.core import config  # noqa: E402
+from PySide6.QtCore import QLockFile  # noqa: E402
+
+from app.core import config, instance  # noqa: E402
 from app.services import startup  # noqa: E402
 
 FAILS: list[str] = []
@@ -59,6 +62,25 @@ def main() -> int:
 
     check(bool(config.get("core.auto_restart", True)) in (True, False),
           "恢复真实配置后 core.auto_restart 可读")
+
+    # 单实例辅助：活/死 PID、回到前台请求、锁主人 PID
+    check(instance.pid_alive(os.getpid()), "当前进程 PID 应判为活")
+    check(not instance.pid_alive(99999999), "不存在的 PID 应判为死")
+    tmp2 = Path(tempfile.mkdtemp(prefix="bab-instance-"))
+    try:
+        check(instance.request_show(tmp2), "应能写 launcher.show 请求")
+        check(instance.consume_show(tmp2), "应能消费 launcher.show 请求")
+        check(not instance.consume_show(tmp2), "请求消费后不应重复触发")
+        lock = QLockFile(str(tmp2 / "test.lock"))
+        check(lock.tryLock(100), "临时锁应能拿到")
+        try:
+            check(instance.lock_pid(lock) == os.getpid(), "锁主人 PID 应等于当前进程")
+        finally:
+            lock.unlock()
+    finally:
+        import shutil
+
+        shutil.rmtree(tmp2, ignore_errors=True)
 
     print("")
     if FAILS:

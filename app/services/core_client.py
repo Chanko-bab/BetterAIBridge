@@ -214,14 +214,14 @@ class CoreClient:
         return self._post(f"/proactive/send?force={1 if force else 0}", {}, timeout=120)
 
     # ---- 写（唯一的两个：说话、改自己的在线状态） ----
-    def set_presence(self, state: str) -> Dict[str, Any]:
-        return self._post("/presence", {"state": state}, timeout=6)
+    def set_presence(self, state: str, timeout: float = 6.0) -> Dict[str, Any]:
+        return self._post("/presence", {"state": state}, timeout=timeout)
 
     def time_boot(self) -> Dict[str, Any]:
         return self._post("/time/boot", {}, timeout=4)
 
-    def time_shutdown(self) -> Dict[str, Any]:
-        return self._post("/time/shutdown", {}, timeout=2)
+    def time_shutdown(self, timeout: float = 2.0) -> Dict[str, Any]:
+        return self._post("/time/shutdown", {}, timeout=timeout)
 
     def time_heartbeat(self) -> Dict[str, Any]:
         return self._post("/time/heartbeat", {}, timeout=2)

@@ -427,20 +427,28 @@ def start(timeout: float = 180.0) -> Dict[str, Any]:
         raise LocalTtsError("本地语音服务 180 秒没起来：\n" + _tail_log())
 
 
-def stop() -> None:
-    """停掉本次启动的 sidecar；本次没启动过时，也清掉上次遗留的。"""
+def stop(timeout: float = 2.0, probe: bool = True) -> None:
+    """停掉本次启动的 sidecar；本次没启动过时，也清掉上次遗留的。
+
+    probe=False 用于退出流程：不再额外探活/清理端口，避免本地语音服务没开时
+    白等 2 秒；进程本身仍会 terminate。
+    """
     global _PROC, _PID
     with _LOCK:
         proc, _PROC = _PROC, None
         if proc is not None and proc.poll() is None:
             try:
                 proc.terminate()
-                proc.wait(timeout=5)
+                proc.wait(timeout=timeout)
             except Exception:  # noqa: BLE001
                 try:
                     _kill_pid(proc.pid)
                 except Exception:  # noqa: BLE001
                     log.warning("强杀本地语音进程 pid=%s 失败", getattr(proc, "pid", "?"), exc_info=True)
+        if not probe:
+            _PID = None
+            _remember_pid(None)
+            return
         port = _PORT or saved_port()
         h = _local_health(port)
         pid = int(h.get("pid")) if h and h.get("pid") else (_PID or _read_pid())

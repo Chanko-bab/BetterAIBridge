@@ -63,7 +63,7 @@ except Exception as exc:  # noqa: BLE001
     raise SystemExit(1)
 
 try:
-    from app.core import config, logger, perf  # noqa: E402
+    from app.core import config, instance, logger, perf  # noqa: E402
 
     perf.mark("main.import")
 except Exception as exc:  # noqa: BLE001
@@ -128,7 +128,7 @@ def main() -> int:
         try:
             from app.core import local_tts
 
-            local_tts.stop()
+            local_tts.stop(timeout=1.0, probe=False)
         except Exception:  # noqa: BLE001
             LOG.warning("退出时停止本地语音失败", exc_info=True)
 
@@ -145,15 +145,33 @@ def main() -> int:
     except Exception:  # noqa: BLE001
         LOG.warning("快捷方式改名失败（不影响启动）", exc_info=True)
 
-    # 单实例：锁文件放在程序目录，进程退出自动释放；残留锁 30 秒后视为过期
+    # 单实例：锁文件放在程序目录；死进程的锁立即清，活实例用 launcher.show 叫回前台。
+    # stale 只做兜底，不再让用户等 30 秒。
     lock_path = config.DATA_DIR / "launcher.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock = QLockFile(str(lock_path))
-    lock.setStaleLockTime(30_000)
-    if not lock.tryLock(100):
-        if not os_env_smoke():
-            QMessageBox.information(None, "BetterAIBridge", "已经有一个窗口在跑了。")
-        return 0
+    lock.setStaleLockTime(5_000)
+    acquired = lock.tryLock(100)
+    if not acquired:
+        owner = instance.lock_pid(lock)
+        if owner and not instance.pid_alive(owner):
+            log.warning("清理已退出进程留下的启动器锁：pid=%s", owner)
+            try:
+                lock.removeStaleLockFile()
+            except OSError:
+                log.warning("清理启动器锁失败", exc_info=True)
+            acquired = lock.tryLock(200)
+    if not acquired:
+        # 第一个实例可能只是收在托盘里，也可能正在退出：先叫它出来，再等锁。
+        instance.request_show(config.DATA_DIR)
+        log.info("已有启动器在运行，已请求它回到前台")
+        for _ in range(10):
+            time.sleep(0.2)
+            if lock.tryLock(100):
+                acquired = True
+                break
+        if not acquired:
+            return 0
 
     # 多智能体：先恢复当前智能体的 env/active，再碰 registry（registry 按智能体分目录）。
     _agents = None
