@@ -45,6 +45,7 @@ powershell -NoProfile -File packaging\build.ps1 -SkipCheck
 | `install.ps1` | 安装器主体（解压、依赖、快捷方式、首次配置） |
 | `install.cmd` / `install.vbs` | IExpress 的入口，隐藏窗口并取退出码 |
 | `bab.ico` / `bab-setup.ico` | 安装器窗口和快捷方式图标 |
+| `make-portable.py` | 用 build.ps1 的 staging 结果另打便携 zip |
 
 `payload/`、`payload.zip`、`bab.sed` 是构建中间产物，已在 `.gitignore` 里。
 
@@ -59,3 +60,17 @@ Remove-Item Env:BAB_TEST_DIR
 ```
 
 检查 `VERSION.txt`、`config/install.json` 的 `version`、`program_cache` 和关键文件哈希。
+
+## 便携包
+
+`build.ps1` 不产便携包；它的 staging 结果（`packaging\payload`）可以再打一个解压即用的 zip：
+
+```powershell
+powershell -NoProfile -File packaging\build.ps1 -Out D:\BAB-release
+.venv\Scripts\python.exe -X utf8 packaging\make-portable.py --out D:\BAB-release
+```
+
+`make-portable.py` 读 `packaging\payload` 与 `VERSION.txt`，产出 `BetterAIBridge-<版本>-portable.zip`：
+顶层目录 `BetterAIBridge-<版本>-portable/`，带一份 `README-PORTABLE.txt`；不含 `.venv`，
+不写注册表、不写卸载信息。解压后先 `setup.cmd` 建依赖，再 `start.cmd` 启动。
+

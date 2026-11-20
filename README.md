@@ -5,6 +5,8 @@
 
 **当前版本：0.6.5（2026-11-09）**
 
+**下一个大版本 0.7.0 改用 Go + Wails 重写，本版是 Python 最后一版。** 已有数据由 0.7.0 的迁移命令搬迁（先 dry-run 再写入）；模组接口保持兼容；0.6.5 装好可以继续用，不需要提前迁移。见 [`docs/MIGRATION-0.7.0.md`](docs/MIGRATION-0.7.0.md)。
+
 ## 现在是什么状态
 
 - 有安装包：`BetterAIBridge-Setup-0.6.5.exe`（IExpress 自解压，安装目录默认在 `%LOCALAPPDATA%`）。
@@ -66,7 +68,7 @@
 - 启动器：懒加载、隐藏即停轮询、窗口位置恢复、托盘兜底、线程池与桥权限去重；空闲请求明显降下来。
 - 内核：本机 token 鉴权；人格、记忆、13 维情绪、自我档案/证据/反思/尝试、耳目“一直看着/听着”都在。
 - 语音：edge 仍是默认；本地 MOSS 是可选包（约 1.3GB），装好才可用，失败回退 edge。
-- 模组：M 0.3.4 与 pre 0.2.4 单独发布，不随安装包捆绑；B 站已实测，QQ 已初步实测连通与记忆、长期稳定性观察中。
+- 模组：M 0.6.5 与 pre 0.6.5 单独发布，不随安装包捆绑；B 站已实测，QQ 已初步实测连通与记忆、长期稳定性观察中。
 - 耳目模组已放弃；启动器内置耳目保留，和模组无关。
 
 
@@ -159,7 +161,7 @@ BetterAIBridge/
 出包（需要 Windows 的 IExpress）：
 
 ```powershell
-powershell -NoProfile -File packaging\build.ps1 -Version 0.6.4
+powershell -NoProfile -File packaging\build.ps1 -Version 0.6.5
 ```
 
 默认从仓库根读 `VERSION.txt`，产物写到仓库旁的 `dist/`；急着手动出包可加 `-SkipCheck`，

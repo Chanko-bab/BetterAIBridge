@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>文档 —— BetterAIBridge</title>
-  <meta name="description" content="BetterAIBridge 0.6.4 文档：安装、第一次打开、数据与存档、模组、耳目、语音、常见问题、卸载与已知限制。">
+  <meta name="description" content="BetterAIBridge 0.6.5 文档：安装、第一次打开、数据与存档、模组、耳目、语音、常见问题、卸载与已知限制。">
   <link rel="icon" href="assets/bab-64.png">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -21,14 +21,14 @@
       <a href="modules.html">模组</a>
       <a href="developers.html">参与</a>
       <a href="docs.html" aria-current="page">文档</a>
-      <a class="nav-cta" href="https://github.com/Chanko-bab/BetterAIBridge/releases/latest">下载 0.6.4</a>
+      <a class="nav-cta" href="https://github.com/Chanko-bab/BetterAIBridge/releases/latest">下载 0.6.5</a>
     </div>
   </div>
 </nav>
 
 <header class="page-hero">
   <div class="wrap">
-    <span class="eyebrow"><span class="dot"></span> 0.6.4 · 公开测试版文档</span>
+    <span class="eyebrow"><span class="dot"></span> 0.6.5 · 公开测试版文档</span>
     <h1>先装好，<br>再用起来。</h1>
     <p>这一页只讲你“怎么用、怎么报错、怎么不丢东西”。想改代码或写模组，请去仓库看 README 和模组契约。</p>
   </div>
@@ -40,6 +40,7 @@
     <a href="#install">安装</a>
     <a href="#first-run">第一次打开</a>
     <a href="#update">更新</a>
+    <a href="#next">0.7.0 的变化</a>
     <a href="#data">数据与存档</a>
     <a href="#modules">模组</a>
     <a href="#senses">耳目</a>
@@ -52,21 +53,24 @@
   <main class="doc-body">
     <section class="doc-section" id="install">
       <h2>安装</h2>
-      <p>0.6.4 是 Windows 10/11 64 位的公开测试包，未签名。</p>
+      <p>0.6.5 是 Windows 10/11 64 位的公开测试包，未签名。</p>
       <ol>
-        <li>请你从 <a href="https://github.com/Chanko-bab/BetterAIBridge/releases/latest">GitHub Release</a> 下载 <code>BetterAIBridge-Setup-0.6.4.exe</code>。</li>
+        <li>请你从 <a href="https://github.com/Chanko-bab/BetterAIBridge/releases/latest">GitHub Release</a> 下载 <code>BetterAIBridge-Setup-0.6.5.exe</code>。</li>
         <li>如果 SmartScreen 拦截，请点“更多信息 → 仍要运行”。安装包未签名，这是预期行为。</li>
-        <li>请你选安装目录。默认是 <code>%LOCALAPPDATA%\BetterAIBridge 0.6.4</code>，可以改。</li>
+        <li>请你选安装目录。默认是 <code>%LOCALAPPDATA%\BetterAIBridge 0.6.5</code>，可以改。</li>
         <li>请等依赖下载完，通常 5–15 分钟。请不要中途关窗口。</li>
       </ol>
       <div class="callout">
-        <strong>从 0.4.x 升级：</strong>请先导出存档，再装 0.6.4。请不要直接覆盖你正在用的旧目录。
+        <strong>从 0.4.x 升级：</strong>请先导出存档，再装 0.6.5。请不要直接覆盖你正在用的旧目录。
       </div>
       <div class="callout">
-        <strong>从 0.6.0 / 0.6.1 升级：</strong>请手动装 0.6.4。旧版内置的更新助手不可靠；装好 0.6.4 后，再往后才能用新的自动更新。
+        <strong>从 0.6.0 / 0.6.1 升级：</strong>请手动装 0.6.5。旧版内置的更新助手不可靠；装好 0.6.5 后，再往后才能用新的自动更新。
       </div>
       <div class="callout">
-        <strong>从 0.6.2 / 0.6.3 升级：</strong>可以试「设置 → 检查更新」；如果下载或重启失败，手动装 0.6.4。
+        <strong>从 0.6.2 / 0.6.3 升级：</strong>可以试「设置 → 检查更新」；如果下载或重启失败，手动装 0.6.5。
+      </div>
+      <div class="callout">
+        <strong>便携包：</strong>不想安装、或者想放进 U 盘，请下载 <code>BetterAIBridge-0.6.5-portable.zip</code>。解压后先双击 <code>setup.cmd</code> 建依赖，再双击 <code>start.cmd</code> 启动；数据留在包内，不写系统卸载信息。换新版本时把新包解压覆盖，保留 <code>config\</code> 与 <code>WiseEntity\entity\</code> 即可。
       </div>
     </section>
 
@@ -74,7 +78,7 @@
       <h2>第一次打开</h2>
       <p>你会在向导里依次填：称呼、API Key、模型、智能体的名字/性别/自称、性格底子。</p>
       <ul>
-        <li><strong>没有 Key 不能完成创建。</strong>0.6.4 没有“跳过”；没 Key 的智能体不能用。</li>
+        <li><strong>没有 Key 不能完成创建。</strong>0.6.5 没有“跳过”；没 Key 的智能体不能用。</li>
         <li>请用推荐 DeepSeek，<code>https://platform.deepseek.com</code>；充少量金额即可。</li>
         <li>建好后，请把右上角切到 <strong>在线</strong>，在输入框里说第一句话。</li>
         <li>第一次回复可能等 10–30 秒：内核要启动，模型要连接。</li>
@@ -96,6 +100,25 @@
       <div class="callout">更新时启动器会退出，请先保存正在做的事。不要手动删 <code>backups</code> 里的更新备份。</div>
     </section>
 
+    <section class="doc-section" id="next">
+      <h2>0.7.0 会有什么变化</h2>
+      <p>0.6.5 是 Python 版的最后一个版本。下一个大版本 0.7.0 用 Go + Wails 重写：壳和内核合成一个原生程序，
+      启动更快、内存占用更小，用法尽量和现在一样。</p>
+      <ul>
+        <li><strong>数据不会丢。</strong>0.7.0 会带一个迁移命令，把 <code>WiseEntity\entity\</code> 里的人格、记忆、
+        情绪、自我档案，连同模组配置和存档，搬到新版本的数据目录。迁移会先做一次 dry-run，把要搬的东西列出来，
+        你确认之后才真正写入；旧目录只读，不会被改。</li>
+        <li><strong>模组接口保持兼容。</strong>现有的 <code>.pbab</code>（M、pre、routine、B 站、QQ）在 0.7.0 里仍然能导入、
+        能启用；改的是宿主，不是模组契约。0.7.0 发布时会另给一套 0.7.x 的模组包。</li>
+        <li><strong>0.6.5 不用提前做任何事。</strong>它装好就能一直用；想换 0.7.0 的时候再迁移，旧目录留着当备份。
+        两个版本可以并存，但请不要让它们指向同一个数据目录。</li>
+        <li><strong>账号可能还要登一次。</strong>B 站、QQ 的登录态存在各自的模组数据里，会随模组数据一起搬；
+        如果换了机器或清过配置，重新扫码/登录就行。</li>
+      </ul>
+      <div class="callout">迁移说明会随 0.7.0 一起发；在那之前，请不要手动改 <code>WiseEntity\entity\</code> 的结构。
+      想多留一手，现在就可以在「设置 → 存档 → 导出」存一个 <code>.babpak</code>。</div>
+    </section>
+
     <section class="doc-section" id="data">
       <h2>数据与存档</h2>
       <p>人格、记忆、情绪、自我和状态都在安装目录：</p>
@@ -114,7 +137,7 @@
 
     <section class="doc-section" id="modules">
       <h2>模组</h2>
-      <p>0.6.4 安装完<strong>没有任何模组</strong>。这是故意的，不是装坏了。</p>
+      <p>0.6.5 安装完<strong>没有任何模组</strong>。这是故意的，不是装坏了。</p>
       <ol>
         <li>请点左侧「模组」→「外部导入」，选 <code>.pbab</code> 文件。</li>
         <li>装完请点「启用」。M 是框架，pre 是一次性前置，B 站/QQ 是桥。</li>
@@ -179,7 +202,8 @@
     <section class="doc-section" id="limits">
       <h2>已知限制</h2>
       <ul>
-        <li>0.6.4 不捆绑模组；B 站已实测，QQ 已初步实测、长期稳定性观察中；M/pre 只做了契约测试。</li>
+        <li>0.6.5 不捆绑模组；B 站已实测，QQ 已初步实测、长期稳定性观察中；M/pre 只做了契约测试。</li>
+        <li>0.7.0（Go + Wails）是另一条开发线，与 0.6.5 不共用数据目录；迁移命令随 0.7.0 提供，本版只负责守住现有数据。</li>
         <li>未签名；SmartScreen 会拦。</li>
         <li>自动更新只在你点「检查更新」后发生，不会在后台轮询；更新失败可手动下载 Setup。</li>
         <li>API Key 在本地明文保存；请用单独的、限额的 Key。</li>
@@ -202,7 +226,7 @@
       <a href="modules.html">模组</a> ·
       <a href="developers.html">参与</a>
     </span>
-    <span class="fine">0.6.4 公开测试版 · 下载与 Release 已上线</span>
+    <span class="fine">0.6.5 公开测试版 · 下载与 Release 已上线</span>
   </div>
 </footer>
 

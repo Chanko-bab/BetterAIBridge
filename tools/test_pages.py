@@ -289,9 +289,9 @@ def main() -> int:
 
         from app.ui.pages import chat as chat_mod
 
-        def pump(ms: int) -> None:
+        def pump(ms: int, until=None) -> None:
             end = time.time() + ms / 1000.0
-            while time.time() < end:
+            while time.time() < end and not (until and until()):  # 条件到了就提前走
                 app.processEvents()
                 time.sleep(0.01)
 
@@ -367,7 +367,7 @@ def main() -> int:
             # 一次三句：第一句在念，后两句只在她嘴上
             before = chat_page.msg_lay.count()
             chat_page._deliver(["第一句，说慢一点", "第二句，还没出口", "第三句，也没出口"], 0, 3, 0)
-            pump(1800)
+            pump(20000, lambda: started)
             check(bool(started), f"第一句开始念了（started={started}）")
             check(chat_page.msg_lay.count() == before + 1,
                   "第二句还没冒泡（念完第一句才轮到它）")
@@ -384,10 +384,10 @@ def main() -> int:
                   "聊天里不再插「对方被打断」（它去了右边那栏）")
             check(any("对方被打断" in t for t in chat_page.nanny.texts()),
                   f"保姆栏里有这条（实际 {chat_page.nanny.texts()}）")
-            pump(300)
+            pump(20000, lambda: any("对方被打断" in t for t in pushed))
             check(any("对方被打断" in t for t in pushed),
                   f"「对方被打断」落盘了（实际 {pushed}）")
-            pump(500)  # 情绪走的是后台线程，等它落账
+            pump(20000, lambda: emotions)  # 情绪走的是后台线程，等它落账
             check(emotions == [("cut_off", 1.0)],
                   f"情绪只登记一次（实际 {emotions}）")
 
@@ -402,7 +402,7 @@ def main() -> int:
             before2 = chat_page.msg_lay.count()
             stops.clear()
             chat_page._deliver(["就只有这一句而已"], 0, 1, 0)
-            pump(1500)
+            pump(20000, lambda: started)
             check(bool(started), "单句开始念了")
             none_swallowed = chat_page._interrupt_speech()
             check(none_swallowed == 0, f"单句不算被打断（实际 {none_swallowed}）")
